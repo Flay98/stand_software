@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QWidget, QVB
 from lab1.lab1_window import Lab1Window  # Импорт окна ЛР №1
 from lab2.lab2_window import Lab2Window
 from lab4.lab4_window import Lab4Window
+from lab8.lab8_window import Lab8Window
+from lab9.lab9_window import Lab9Window
 
 
 class MainWindow(QMainWindow):
@@ -23,6 +25,8 @@ class MainWindow(QMainWindow):
         button_lab1.clicked.connect(self.open_lab1)
         button_lab2.clicked.connect(self.open_lab2)
         button_lab4.clicked.connect(self.open_lab4)
+        button_lab8.clicked.connect(self.open_lab8)
+        button_lab9.clicked.connect(self.open_lab9)
         layout.addWidget(button_lab1)
         layout.addWidget(button_lab2)
         layout.addWidget(button_lab4)
@@ -45,6 +49,16 @@ class MainWindow(QMainWindow):
     def open_lab4(self):
         self.lab4_window = Lab4Window()
         self.lab4_window.showMaximized()
+        self.close()
+
+    def open_lab8(self):
+        self.lab8_window = Lab8Window()
+        self.lab8_window.showMaximized()
+        self.close()
+
+    def open_lab9(self):
+        self.lab9_window = Lab9Window()
+        self.lab9_window.showMaximized()
         self.close()
 
 
