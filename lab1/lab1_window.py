@@ -1,85 +1,74 @@
-import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTableWidgetItem, QTableWidget
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTableWidgetItem, QTableWidget, \
+    QMessageBox
 from matplotlib import pyplot as plt
-from scipy.optimize import curve_fit, fsolve
 
 from formulas_window import FormulasWindow
+from lab1.controller import Lab1Controller
 from paste_table_widget import PasteTableWidget
-from stand_controller import StandController
-import struct
-
-
-def parse_float(data_bytes):
-    return struct.unpack('<f', data_bytes)[0]
+from lab1.const import *
 
 
 class Lab1Window(QWidget):
     def __init__(self):
         super().__init__()
-        self.controller = StandController()
+        self.controller = Lab1Controller()
         self.setWindowTitle("Лабораторная работа №1. Исследование ВАХ диодов")
 
         self.row = 0
-        self.row_ge = 0
+        self.row_Schottky = 0
 
-        self.table_si = PasteTableWidget(36, 3)
+        self.table_si = PasteTableWidget(TABLE_ROW_COUNT, TABLE_COLUMN_COUNT)
         self.table_si.setHorizontalHeaderLabels(["Uвх, В", "Uвых, В", "Iвых, мА"])
-        self.table_si.setMaximumWidth(350)
+        self.table_si.setMaximumWidth(TABLE_WIDTH)
 
-        self.table_ge = PasteTableWidget(36, 3)
-        self.table_ge.setHorizontalHeaderLabels(["Uвх, В", "Uвых, В", "Iвых, мА"])
-        self.table_ge.setMaximumWidth(350)
+        self.table_Schottky = PasteTableWidget(TABLE_ROW_COUNT, TABLE_COLUMN_COUNT)
+        self.table_Schottky.setHorizontalHeaderLabels(["Uвх, В", "Uвых, В", "Iвых, мА"])
+        self.table_Schottky.setMaximumWidth(TABLE_WIDTH)
 
-        self.table_dSi = PasteTableWidget(36, 4)
+        self.table_dSi = PasteTableWidget(TABLE_ROW_COUNT, TABLE_RESISTANCE_COLUMN_COUNT)
         self.table_dSi.setHorizontalHeaderLabels(["Uвых, В", "Iвых, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
-        self.table_dSi.setMaximumWidth(500)
+        self.table_dSi.setMaximumWidth(TABLE_RESISTANCE_WIDTH)
 
-        self.table_dSchottky = PasteTableWidget(36, 4)
+        self.table_dSchottky = PasteTableWidget(TABLE_ROW_COUNT, TABLE_RESISTANCE_COLUMN_COUNT)
         self.table_dSchottky.setHorizontalHeaderLabels(["Uвых, В", "Iвых, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
-        self.table_dSchottky.setMaximumWidth(500)
+        self.table_dSchottky.setMaximumWidth(TABLE_RESISTANCE_WIDTH)
 
         self.button_measure_si = QPushButton("Снять значение")
         self.button_measure_si.clicked.connect(self.read_from_stand)
 
-        self.button_measure_ge = QPushButton("Снять значение")
-        self.button_measure_ge.clicked.connect(self.read_from_stand_ge)
+        self.button_measure_Schottky = QPushButton("Снять значение")
+        self.button_measure_Schottky.clicked.connect(self.read_from_stand_schottky)
 
         self.button_compare_graph = QPushButton("График сравнения ВАХ диодов")
         self.button_compare_graph.clicked.connect(self.build_compare_graph)
 
         self.button_Shockley_Si_graph = QPushButton("Подбор параметров уравнения Шокли по экспериментальным данным для "
                                                     "кремниевого диода")
-        self.button_Shockley_Si_graph.clicked.connect(lambda: self.shockley_fit(self.table_si, "кремниевого диода"))
+        self.button_Shockley_Si_graph.clicked.connect(
+            lambda: self.on_shockley(self.table_si))
 
-        self.button_Shockley_Ge_graph = QPushButton("Подбор параметров уравнения Шокли по экспериментальным данным для "
-                                                    "германиевого диода")
-        self.button_Shockley_Ge_graph.clicked.connect(lambda: self.shockley_fit(self.table_ge, "Диода Шоттки"))
+        self.button_Shockley_Schottky_graph = QPushButton(
+            "Подбор параметров уравнения Шокли по экспериментальным данным для "
+            "германиевого диода")
+        self.button_Shockley_Schottky_graph.clicked.connect(
+            lambda: self.on_shockley(self.table_Schottky))
 
         self.button_calc_dSi = QPushButton("Расчёт динамического сопротивления кремниевого диода")
-        self.button_calc_dSi.clicked.connect(
-            lambda: self.calculate_dynamic_resistance(self.table_si, self.table_dSi, n_value=1.84)
-        )
+        self.button_calc_dSi.clicked.connect(self.on_calc_rd_si)
 
-        self.button_calc_dGe = QPushButton("Расчёт динамического сопротивления диода Шоттки")
-        self.button_calc_dGe.clicked.connect(
-            lambda: self.calculate_dynamic_resistance(self.table_ge, self.table_dSchottky, n_value=1.15)
-        )
+        self.button_calc_dSchottky = QPushButton("Расчёт динамического сопротивления диода Шоттки")
+        self.button_calc_dSchottky.clicked.connect(self.on_calc_rd_sch)
 
         self.button_compare_Si_theor_graph = QPushButton("Сравнение экспериментальной и теоретической ВАХ для "
                                                          "кремниевого диода")
-        self.button_compare_Si_theor_graph.clicked.connect(
-            lambda: self.compare_exp_theor_vah(
-                table=self.table_si,
-                Is=3.2e-8,
-                n=2,
-                Rs=0.042,
-                diode_name="кремниевого диода"
-            )
-        )
+        self.button_compare_Si_theor_graph.clicked.connect(self.on_compare_exp_theor)
+
         self.button_calc_dSi_theor = QPushButton("Расчёт теоретического динамического сопротивления Si")
-        self.button_calc_dSi_theor.clicked.connect(self.show_theoretical_rd_for_si)
+        self.button_calc_dSi_theor.clicked.connect(self.on_calc_theoretical_rd)
+
         self.button_formulas = QPushButton("Формулы")
         self.button_formulas.clicked.connect(self.show_formulas_window)
+
         self.button_exit = QPushButton("Завершить выполнение работы")
         self.button_exit.clicked.connect(self.close)
 
@@ -101,28 +90,28 @@ class Lab1Window(QWidget):
         si_layout.addLayout(si_left, 2)
         si_layout.addLayout(si_right, 1)
 
-        ge_layout = QHBoxLayout()
-        ge_left = QVBoxLayout()
-        ge_right = QVBoxLayout()
+        schottky_layout = QHBoxLayout()
+        schottky_left = QVBoxLayout()
+        schottky_right = QVBoxLayout()
 
-        ge_left.addWidget(QLabel("ВАХ диода Шоттки"))
-        ge_left.addWidget(self.table_ge)
-        ge_left.addWidget(self.button_measure_ge)
+        schottky_left.addWidget(QLabel("ВАХ диода Шоттки"))
+        schottky_left.addWidget(self.table_Schottky)
+        schottky_left.addWidget(self.button_measure_Schottky)
 
-        ge_right.addWidget(QLabel("Динамическое сопротивление диода Шоттки"))
-        ge_right.addWidget(self.table_dSchottky)
+        schottky_right.addWidget(QLabel("Динамическое сопротивление диода Шоттки"))
+        schottky_right.addWidget(self.table_dSchottky)
 
-        ge_layout.addLayout(ge_left, 2)
-        ge_layout.addLayout(ge_right, 1)
+        schottky_layout.addLayout(schottky_left, 2)
+        schottky_layout.addLayout(schottky_right, 1)
 
         table_layout.addLayout(si_layout)
-        table_layout.addLayout(ge_layout)
+        table_layout.addLayout(schottky_layout)
 
         side_layout.addWidget(self.button_compare_graph)
         side_layout.addWidget(self.button_Shockley_Si_graph)
-        side_layout.addWidget(self.button_Shockley_Ge_graph)
+        side_layout.addWidget(self.button_Shockley_Schottky_graph)
         side_layout.addWidget(self.button_calc_dSi)
-        side_layout.addWidget(self.button_calc_dGe)
+        side_layout.addWidget(self.button_calc_dSchottky)
         side_layout.addWidget(self.button_compare_Si_theor_graph)
         side_layout.addWidget(self.button_calc_dSi_theor)
         side_layout.addWidget(self.button_formulas)
@@ -135,84 +124,66 @@ class Lab1Window(QWidget):
 
         self.setLayout(main_layout)
 
-    def compare_exp_theor_vah(self, table: PasteTableWidget, Is: float, n: float, Rs: float = 0.0,
-                              diode_name: str = "диода"):
-        Ut = 0.0253
-        U, I_mA = self.get_ui_data_from_table(table)
-
-        if len(U) == 0 or len(I_mA) == 0:
-            print("Недостаточно данных для сравнения")
+    def on_compare_exp_theor(self):
+        try:
+            U, I_exp, U_th, I_th, label = self.controller.compute_exp_theor_vah(
+                u=self.get_ui_data_from_table(self.table_si)[0],
+                i_mA=self.get_ui_data_from_table(self.table_si)[1],
+                Is=I_S_SI,
+                n=SI_N,
+                Rs=R_S_SI,
+                Ut=U_T
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        U = np.array(U)
-        I_exp = np.array(I_mA)
-
-        def shockley_iterative_stable(U_vals, Is, n, Rs, Ut):
-            I_result = []
-            I_prev = 1e-9
-            for U_val in U_vals:
-                def current_eq(I):
-                    exponent = (U_val - I * Rs) / (n * Ut)
-                    exp_safe = np.exp(np.clip(exponent, -100, 100))
-                    return Is * (exp_safe - 1) - I
-
-                I_solution = fsolve(current_eq, I_prev)[0]
-                I_prev = I_solution
-                I_result.append(I_solution * 1000)
-            return np.array(I_result)
-
-        I_theor = shockley_iterative_stable(U, Is, n, Rs, Ut)
-
         plt.figure(figsize=(10, 6))
-        plt.plot(U, I_exp, 'o-', label='Экспериментальная ВАХ', markersize=4)
-        plt.plot(U, I_theor, 'r-', label=f'Теоретическая ВАХ\nIs={Is:.2e} А, n={n:.2f}, Rs={Rs:.3f} Ом')
-
-        plt.xlabel("U (В)", fontsize=12)
-        plt.ylabel("I (мА)", fontsize=12)
-        plt.title(f"Сравнение экспериментальной и теоретической ВАХ ({diode_name})", fontsize=14)
+        plt.plot(U, I_exp, 'o-', label='Экспериментальная ВАХ')
+        plt.plot(U_th, I_th, 'r-', label=f'Теоретическая ВАХ\n{label}')
+        plt.xlabel("U (В)")
+        plt.ylabel("I (мА)")
+        plt.title("Сравнение экспериментальной и теоретической ВАХ")
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
         plt.show()
 
-    def calculate_dynamic_resistance(self, source_table: PasteTableWidget, target_table: PasteTableWidget,
-                                     n_value: float = 1.5):
-        Ut = 0.0253
-        U, I_mA = self.get_ui_data_from_table(source_table)
-        if len(U) < 2:
-            print("Недостаточно точек для расчёта rd")
+    def on_calc_rd_si(self):
+        try:
+            U, I_mA = self.get_ui_data_from_table(self.table_si)
+            rows = self.controller.calculate_dynamic_resistance(U, I_mA, n_value=1.84)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        target_table.clearContents()
-        target_table.setRowCount(len(U) - 1)
+        self._populate_rd_table(self.table_dSi, rows)
 
-        for i in range(len(U) - 1):
-            try:
-                delta_U = U[i + 1] - U[i]
-                delta_I = I_mA[i + 1]*0.001 - I_mA[i]*0.001
-                rd_delta = delta_U / delta_I if delta_I != 0 else float('inf')
-
-                I_A = I_mA[i] / 1000
-                rd_theor = (n_value * Ut) / I_A if I_A > 0 else float('inf')
-
-            except Exception:
-                rd_delta = float('nan')
-                rd_theor = float('nan')
-
-            target_table.setItem(i, 0, QTableWidgetItem(f"{U[i]:.3f}"))
-            target_table.setItem(i, 1, QTableWidgetItem(f"{I_mA[i]:.3f}"))
-            target_table.setItem(i, 2, QTableWidgetItem(f"{rd_delta:.3f}"))
-            target_table.setItem(i, 3, QTableWidgetItem(f"{rd_theor:.3f}"))
-
-    def read_and_append_row(self, table, row_index):
+    def on_calc_rd_sch(self):
         try:
-            u_in, u_out, i_out = self.controller.get_voltage_current()
-            print(f"Uвх = {u_in:.6f} В, Uвых = {u_out:.6f} В, Iвых = {i_out:.6f} мА")
+            U, I_mA = self.get_ui_data_from_table(self.table_Schottky)
+            rows = self.controller.calculate_dynamic_resistance(U, I_mA, n_value=1.15)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
+            return
+
+        self._populate_rd_table(self.table_dSchottky, rows)
+
+    def _populate_rd_table(self, table, rows):
+        table.clearContents()
+        table.setRowCount(len(rows))
+        for r, (u, i, rd_d, rd_t) in enumerate(rows):
+            for c, val in enumerate((u, i, rd_d, rd_t)):
+                table.setItem(r, c, QTableWidgetItem(f"{val:.3f}"))
+
+    def read_and_append_row(self, table, target, row_index):
+        try:
+            m = self.controller.add_measurement(target)
 
             if row_index < table.rowCount():
-                table.setItem(row_index, 0, QTableWidgetItem(f"{u_in:.6f}"))
-                table.setItem(row_index, 1, QTableWidgetItem(f"{u_out:.6f}"))
-                table.setItem(row_index, 2, QTableWidgetItem(f"{i_out:.6f}"))
+                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 row_index += 1
 
         except RuntimeError as e:
@@ -221,18 +192,18 @@ class Lab1Window(QWidget):
         return row_index
 
     def read_from_stand(self):
-        self.row = self.read_and_append_row(self.table_si, self.row)
+        self.row = self.read_and_append_row(self.table_si, 'si', self.row)
 
-    def read_from_stand_ge(self):
-        self.row_ge = self.read_and_append_row(self.table_ge, self.row_ge)
+    def read_from_stand_schottky(self):
+        self.row_Schottky = self.read_and_append_row(self.table_Schottky, 'sch', self.row_Schottky)
 
     def get_ui_data_from_table(self, table):
         U = []
         I = []
         for row in range(table.rowCount()):
             try:
-                u_val = table.item(row, 1)
-                i_val = table.item(row, 2)
+                u_val = table.item(row, COLUMN_NUMBER_TWO)
+                i_val = table.item(row, COLUMN_NUMBER_THREE)
                 if u_val is not None and i_val is not None:
                     u = float(u_val.text())
                     i = float(i_val.text())
@@ -244,11 +215,11 @@ class Lab1Window(QWidget):
 
     def build_compare_graph(self):
         u_si, i_si = self.get_ui_data_from_table(self.table_si)
-        u_ge, i_ge = self.get_ui_data_from_table(self.table_ge)
+        u_Schottky, i_Schottky = self.get_ui_data_from_table(self.table_Schottky)
 
         plt.figure(figsize=(10, 6))
         plt.plot(u_si, i_si, marker='o', linestyle='-', label="Кремниевый диод (Si)")
-        plt.plot(u_ge, i_ge, marker='s', linestyle='-', label="Германиевый диод (Ge)")
+        plt.plot(u_Schottky, i_Schottky, marker='s', linestyle='-', label="Германиевый диод (Ge)")
 
         plt.xlabel("Напряжение на диоде, В", fontsize=12)
         plt.ylabel("Ток через диод, мА", fontsize=12)
@@ -258,63 +229,63 @@ class Lab1Window(QWidget):
         plt.tight_layout()
         plt.show()
 
-    def show_theoretical_rd_for_si(self):
+    def on_calc_theoretical_rd(self):
         U, _ = self.get_ui_data_from_table(self.table_si)
-        if len(U) < 2:
-            print("Недостаточно данных")
+        try:
+            rows = self.controller.compute_theoretical_rd(
+                u_list=U,
+                Is=I_S_SI,
+                n=SI_N,
+                Rs=R_S_SI,
+                Ut=U_T
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        Is = getattr(self, "si_fit_Is", 3.2e-8)
-        n = getattr(self, "si_fit_n", 2.0)
-        Rs = 0.042
+        dialog = QWidget()
+        dialog.setWindowTitle("Теоретическое динамическое сопротивление (Si)")
+        dialog.resize(550, 400)
 
-        self.theor_rd_window = DynamicResistanceTheoreticalWindow(U_array=np.array(U), Is=Is, n=n, Rs=Rs)
-        self.theor_rd_window.show()
+        layout = QVBoxLayout(dialog)
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["U, В", "I, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
+        table.setRowCount(len(rows))
 
-    def shockley_fit(self, table, diode_name):
+        for r, (u0, i0, rd_d, rd_t) in enumerate(rows):
+            for c, val in enumerate((u0, i0, rd_d, rd_t)):
+                item = QTableWidgetItem(f"{val:.3f}")
+                table.setItem(r, c, item)
+
+        layout.addWidget(QLabel("Теоретический расчет rd на основе уравнения Шокли"))
+        layout.addWidget(table)
+
+        dialog.setLayout(layout)
+        dialog.show()
+
+        self.theor_dialog = dialog
+
+    def on_shockley(self, table):
+
         U, I_mA = self.get_ui_data_from_table(table)
 
-        if len(U) == 0 or len(I_mA) == 0:
-            print("Недостаточно данных для подбора.")
-            return
-
-        U = np.array(U)
-        I_mA = np.array(I_mA)
-        I = I_mA / 1000
-
-        Ut = 0.0253
-
-        def shockley_eq(U, Is, n):
-            return Is * (np.exp(U / (n * Ut)) - 1)
-
-        mask = I > 0
-        U_fit = U[mask]
-        I_fit = I[mask]
-
-        if len(U_fit) == 0 or len(I_fit) == 0:
-            print("Нет валидных данных для аппроксимации.")
-            return
-
         try:
-            params, _ = curve_fit(shockley_eq, U_fit, I_fit, p0=[1e-9, 1.5])
-            Is_fit, n_fit = params
-        except Exception as e:
-            print(f"Ошибка подбора параметров: {e}")
+            U_th, I_th, Is_fit, n_fit = self.controller.get_shockley_data(
+                u_list=U,
+                i_list=I_mA,
+                Ut=U_T
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
-
-        print(f"[{diode_name}] Рассчитанный ток насыщения Is ≈ {Is_fit:.3e} А")
-        print(f"[{diode_name}] Рассчитанный коэффициент идеальности n ≈ {n_fit:.2f}")
-
-        U_theor = np.linspace(min(U), max(U), 300)
-        I_theor = shockley_eq(U_theor, Is_fit, n_fit) * 1000  # в мА
 
         plt.figure(figsize=(10, 6))
         plt.plot(U, I_mA, 'o', label='Экспериментальные данные')
-        plt.plot(U_theor, I_theor, '-', color='red',
-                 label=f'Теоретическая кривая\nIs={Is_fit:.2e} А, n={n_fit:.2f}')
+        plt.plot(U_th, I_th, '-', label=f'Теоретическая кривая\nIs={Is_fit:.2e} A, n={n_fit:.2f}')
         plt.xlabel("Напряжение на диоде, В")
         plt.ylabel("Ток через диод, мА")
-        plt.title(f"Подбор параметров уравнения Шокли для {diode_name}")
+        plt.title("Аппроксимация уравнения Шокли")
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
@@ -323,53 +294,4 @@ class Lab1Window(QWidget):
     def show_formulas_window(self):
         self.formulas_window = FormulasWindow(lab_number=1)
         self.formulas_window.show()
-
-
-class DynamicResistanceTheoreticalWindow(QWidget):
-    def __init__(self, U_array, Is, n, Rs=0.0, Ut=0.0253):
-        super().__init__()
-        self.setWindowTitle("Теоретическое динамическое сопротивление (Si)")
-        self.resize(550, 400)
-
-        I_theor = self.compute_shockley_current(U_array, Is, n, Rs, Ut)
-
-        layout = QVBoxLayout()
-        self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["U, В", "I, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
-        self.table.setRowCount(len(U_array) - 1)
-
-        for i in range(len(U_array) - 1):
-            U = U_array[i]
-            I = I_theor[i]
-            U_next = U_array[i + 1]
-            I_next = I_theor[i + 1]
-
-            delta_U = U_next - U
-            delta_I = I_next*0.001 - I*0.001
-            rd_delta = delta_U / delta_I if delta_I != 0 else float('inf')
-            rd_theor = (n * Ut) / (I / 1000) if I > 0 else float('inf')
-
-            self.table.setItem(i, 0, QTableWidgetItem(f"{U:.3f}"))
-            self.table.setItem(i, 1, QTableWidgetItem(f"{I:.3f}"))
-            self.table.setItem(i, 2, QTableWidgetItem(f"{rd_delta:.3f}"))
-            self.table.setItem(i, 3, QTableWidgetItem(f"{rd_theor:.3f}"))
-
-        layout.addWidget(QLabel("Теоретический расчет rd на основе уравнения Шокли"))
-        layout.addWidget(self.table)
-        self.setLayout(layout)
-
-    def compute_shockley_current(self, U_vals, Is, n, Rs, Ut):
-        I_result = []
-        I_prev = 1e-9
-        for U_val in U_vals:
-            def current_eq(I):
-                exponent = (U_val - I * Rs) / (n * Ut)
-                exp_safe = np.exp(np.clip(exponent, -100, 100))
-                return Is * (exp_safe - 1) - I
-
-            I_solution = fsolve(current_eq, I_prev)[0]
-            I_prev = I_solution
-            I_result.append(I_solution * 1000)  # в мА
-        return np.array(I_result)
 

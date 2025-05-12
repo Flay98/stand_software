@@ -1,5 +1,5 @@
 import struct
-from stand_reader import ser
+import serial
 
 
 def parse_float(data_bytes):
@@ -8,7 +8,14 @@ def parse_float(data_bytes):
 
 class StandController:
     def __init__(self):
-        self.ser = ser
+        self.ser = None
+        '''serial.Serial(
+                   port='COM5',
+                   baudrate=115200,
+                   bytesize=serial.EIGHTBITS,
+                   parity=serial.PARITY_NONE,
+                   stopbits=serial.STOPBITS_ONE,
+                   timeout=0.1)'''
 
     def get_voltage_current(self):
         try:
@@ -19,12 +26,6 @@ class StandController:
             # Запрос Uвх
             self.ser.write(bytes.fromhex("20 10 00 02 02 04 34 00"))
             response2 = self.ser.read(32)
-            #print(parse_float(response2[12:16]))
-
-
-            #self.ser.write(bytes.fromhex("1f 10 00 02 02 04 0b 00"))
-            #response3 = self.ser.read(32)
-            #print(parse_float(response3[6:10]))
 
             if len(response1) >= 18:
                 u_vyk = parse_float(response1[6:10])
