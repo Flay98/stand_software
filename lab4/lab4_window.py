@@ -1,31 +1,34 @@
 import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, \
-    QMessageBox
+    QMessageBox, QFileDialog
 from matplotlib import pyplot as plt
+from lab4.const_lab4 import *
+from lab4.controller_lab4 import Lab4Controller
+from utils.excel_timer_helper import update_timer_label, save_tables_to_excel
 
 from utils.paste_table_widget import PasteTableWidget
 from formulas.formulas_window import FormulasWindow
-from utils.stand_controller import StandController
+
+from PyQt6.QtCore import QTimer
+from datetime import datetime
 
 
 class Lab4Window(QWidget):
     def __init__(self):
         super().__init__()
-        self.controller = StandController()
+        self.controller = Lab4Controller()
+        self.start_time = datetime.now()
         self.setWindowTitle("Лабораторная работа №4. Исследование ВАХ стабилизатора")
-        self.resize(1200, 700)
         self.row = 0
         self.current_output_col = 0
 
-        # ----------- Таблица 1: Амплитудная характеристика ----------
-        self.table_amplitude = PasteTableWidget(48, 3)
+        self.table_amplitude = PasteTableWidget(TABLE_AMPLITUDE_ROW_COUNT, TABLE_AMPLITUDE_COLUMN_COUNT)
         self.table_amplitude.setHorizontalHeaderLabels(["Uпит, В", "Uнагр, В", "Iнагр, мА"])
         self.button_read_amplitude = QPushButton("Снять значение (амплитудная)")
         self.button_read_amplitude.clicked.connect(self.read_from_stand_table_amplitude)
 
-        # ----------- Таблица 2: Выходная характеристика ----------
-        self.table_output = PasteTableWidget(9, 8)
+        self.table_output = PasteTableWidget(TABLE_OUTPUT_ROW_COUNT, TABLE_OUTPUT_COLUMN_COUNT)
         self.table_output.setVerticalHeaderLabels([
             "Rн, Ом", "Uпит, В", "Iпит, мА", "Uнагр, В", "Iнагр, мА",
             "Pвх, Вт", "Pн, Вт", "КПД", "Iст, мА"
@@ -40,29 +43,40 @@ class Lab4Window(QWidget):
             text = self.table_output.horizontalHeaderItem(col).text()
             item = QTableWidgetItem(text)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table_output.setItem(0, col, item)
+            self.table_output.setItem(ROW_NUMBER_ONE, col, item)
 
-        # ----------- Кнопки справа ----------
         self.button_plot_vh = QPushButton("Зависимость напряжения на нагрузке от напряжения питания")
         self.button_plot_vh.clicked.connect(self.show_plot_vh)
+
         self.button_k_st = QPushButton("Найти коэффициент стабилизации на участке стабилизации")
         self.button_k_st.clicked.connect(self.calculate_stabilization_coefficient)
+
         self.button_p_vh = QPushButton("Посчитать входную мощность")
-        self.button_p_vh.clicked.connect(self.calculate_input_power)
+        self.button_p_vh.clicked.connect(self.on_calc_input_power)
+
         self.button_p_vyh = QPushButton("Посчитать выходную мощность")
-        self.button_p_vyh.clicked.connect(self.calculate_output_power)
+        self.button_p_vyh.clicked.connect(self.on_calc_output_power)
+
         self.button_calc_efficiency = QPushButton("Посчитать КПД")
-        self.button_calc_efficiency.clicked.connect(self.calculate_efficiency)
+        self.button_calc_efficiency.clicked.connect(self.on_calc_efficiency)
+
         self.button_i_st = QPushButton("Посчитать ток стабилизатора")
-        self.button_i_st.clicked.connect(self.calculate_stabilization_current)
+        self.button_i_st.clicked.connect(self.on_calc_stabilization_current)
+
         self.button_plot = QPushButton("Построить график выходной характеристики")
         self.button_plot.clicked.connect(self.show_plot_vyh)
+
         self.button_formulas = QPushButton("Формулы")
         self.button_formulas.clicked.connect(self.show_formulas)
+
+        self.btn_save_all = QPushButton("Сохранить всё в Excel")
+        self.btn_save_all.clicked.connect(self.on_save_all)
+
+        self.timer_label = QLabel("Время выполнения работы 0:00:00")
+
         self.button_exit = QPushButton("Завершить работу")
         self.button_exit.clicked.connect(self.close)
 
-        # ----------- Размещение ----------
         layout_main = QHBoxLayout()
         layout_tables = QVBoxLayout()
         layout_side = QVBoxLayout()
@@ -84,114 +98,90 @@ class Lab4Window(QWidget):
         layout_side.addWidget(self.button_i_st)
         layout_side.addWidget(self.button_plot)
         layout_side.addWidget(self.button_formulas)
+        layout_side.addWidget(self.btn_save_all)
+
         layout_side.addStretch()
+
+        layout_side.addWidget(self.timer_label)
         layout_side.addWidget(self.button_exit)
 
         layout_main.addLayout(layout_tables, 3)
         layout_main.addLayout(layout_side, 1)
         self.setLayout(layout_main)
 
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: update_timer_label(self.start_time, self.timer_label))
+        timer.start(1000)
+
+    def _read_two_columns(self, table: QTableWidget, col_x: int, col_y: int):
+        x_vals, y_vals = [], []
+        for r in range(table.rowCount()):
+            item_x = table.item(r, col_x)
+            item_y = table.item(r, col_y)
+            if not item_x or not item_y:
+                continue
+            try:
+                x = float(item_x.text())
+                y = float(item_y.text())
+            except ValueError:
+                continue
+            x_vals.append(x)
+            y_vals.append(y)
+        return x_vals, y_vals
+
     def show_plot_vh(self):
-        u_pit_vals = []
-        u_load_vals = []
-
-        for row in range(self.table_amplitude.rowCount()):
-            item_u_pit = self.table_amplitude.item(row, 0)
-            item_u_load = self.table_amplitude.item(row, 1)
-            if item_u_pit and item_u_load:
-                try:
-                    u_pit = float(item_u_pit.text())
-                    u_load = float(item_u_load.text())
-                    u_pit_vals.append(u_pit)
-                    u_load_vals.append(u_load)
-                except ValueError:
-                    continue
-
-        if len(u_pit_vals) < 2:
-            print("Недостаточно данных для построения графика")
+        u_pit_vals, u_load_vals = self._read_two_columns(
+            self.table_amplitude,
+            COLUMN_NUMBER_ONE,
+            COLUMN_NUMBER_TWO
+        )
+        if len(u_pit_vals) < MIN_POINTS_TO_SHOW_PLOT:
+            QMessageBox.information(
+                self, "Ошибка",
+                f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+            )
             return
 
         plt.figure(figsize=(8, 6))
-        plt.plot(u_pit_vals, u_load_vals, marker='o', linestyle='-')
+        plt.plot(u_pit_vals, u_load_vals, 'o-')
         plt.xlabel("Uпит, В")
         plt.ylabel("Uнагр, В")
-        plt.title("Зависимость напряжения на нагрузке от напряжения питания")
+        plt.title("Зависимость Uнагрузки от Uпитания")
         plt.grid(True)
         plt.tight_layout()
         plt.show()
 
     def calculate_stabilization_coefficient(self):
 
-        u_pit = []
-        u_load = []
+        u_pit, u_load = self._read_two_columns(
+            self.table_amplitude,
+            COLUMN_NUMBER_ONE,
+            COLUMN_NUMBER_TWO
+        )
 
-        for row in range(self.table_amplitude.rowCount()):
-            it_p = self.table_amplitude.item(row, 0)
-            it_l = self.table_amplitude.item(row, 1)
-            if it_p and it_l:
-                try:
-                    u_pit.append(float(it_p.text()))
-                    u_load.append(float(it_l.text()))
-                except ValueError:
-                    continue
-
-        n = len(u_load)
-        if n < 2:
-            print("Недостаточно данных")
+        try:
+            start, k_vals, k_avg = self.controller.comp_stabilization_coefficient(
+                u_pit=u_pit,
+                u_load=u_load
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
-
-        threshold = 0.01
-        start = None
-        for i in range(n - 1):
-            if abs(u_load[i+1] - u_load[i]) < threshold:
-                start = i
-                break
-        if start is None:
-            print("Участок стабилизации не найден")
-            return
-
-        k_values = []
-        for i in range(start-1, n - 1):
-            delta_p = u_pit[i+1] - u_pit[i]
-            avg_p = (u_pit[i+1] + u_pit[i]) / 2
-            delta_l = u_load[i+1] - u_load[i]
-            avg_l = (u_load[i+1] + u_load[i]) / 2
-
-            if delta_l == 0 or avg_p == 0 or avg_l == 0:
-                continue
-
-            rel_p = delta_p / avg_p
-            rel_l = delta_l / avg_l
-            k_rel = rel_p / rel_l
-            k_values.append(k_rel)
-
-        if not k_values:
-            print("Не удалось вычислить ни одного относительного Kст")
-            return
-
-        k_avg = sum(k_values) / len(k_values)
 
         msg = (
             f"Начало стабилизации: строка {start}\n"
-            f"Посчитано {len(k_values)} относительных коэффициентов стабилизации\n"
-            f"Среднее Kст = {k_avg:.2f}"
+            f"Среднее относительное Kст = {k_avg:.2f}"
         )
-        print(msg)
-        QMessageBox.information(self, "Относительный коэффициент стабилизации", msg)
-
-    def show_formulas(self):
-        self.formulas_window = FormulasWindow(lab_number=4)
-        self.formulas_window.show()
+        QMessageBox.information(self, "Коэффициент стабилизации", msg)
 
     def read_and_append_row(self, table, row_index):
         try:
-            u_in, u_out, i_out = self.controller.get_voltage_current()
-            print(f"Uвх = {u_in:.3f} В, Uвых = {u_out:.3f} В, Iвых = {i_out:.3f} мА")
+            m = self.controller.measure()
 
             if row_index < table.rowCount():
-                table.setItem(row_index, 0, QTableWidgetItem(f"{u_in:.3f}"))
-                table.setItem(row_index, 1, QTableWidgetItem(f"{u_out:.3f}"))
-                table.setItem(row_index, 2, QTableWidgetItem(f"{i_out:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 row_index += 1
 
         except RuntimeError as e:
@@ -201,13 +191,12 @@ class Lab4Window(QWidget):
 
     def read_and_append_column(self, table: QTableWidget, col_index: int):
         try:
-            u_pit, u_nagr, i_nagr = self.controller.get_voltage_current()
-            print(f"Uпит = {u_pit:.3f} В, Uнагр = {u_nagr:.3f} В, Iнагр = {i_nagr:.3f} мА")
+            m = self.controller.measure()
 
             if col_index < table.columnCount():
-                table.setItem(1, col_index, QTableWidgetItem(f"{u_pit:.3f}"))
-                table.setItem(3, col_index, QTableWidgetItem(f"{u_nagr:.3f}"))
-                table.setItem(4, col_index, QTableWidgetItem(f"{i_nagr:.3f}"))
+                table.setItem(ROW_NUMBER_TWO, col_index, QTableWidgetItem(f"{m.u_in:.3f}"))
+                table.setItem(ROW_NUMBER_FOUR, col_index, QTableWidgetItem(f"{m.u_out:.3f}"))
+                table.setItem(ROW_NUMBER_FIVE, col_index, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 col_index += 1
 
         except RuntimeError as e:
@@ -221,40 +210,59 @@ class Lab4Window(QWidget):
     def read_from_stand_table_amplitude(self):
         self.row = self.read_and_append_row(self.table_amplitude, self.row)
 
-    def _read_output_table(self):
-        data = []
+    def _extract_output_table(self):
+        result = []
         for col in range(self.table_output.columnCount()):
             try:
-                u_pit = float(self.table_output.item(1, col).text())
-                i_pit = float(self.table_output.item(2, col).text()) / 1000  # мА→А
-                u_nagr = float(self.table_output.item(3, col).text())
-                i_nagr = float(self.table_output.item(4, col).text()) / 1000  # мА→А
+                u_pit = float(self.table_output.item(ROW_NUMBER_TWO, col).text())
+                i_pit = float(self.table_output.item(ROW_NUMBER_THREE, col).text())
+                u_load = float(self.table_output.item(ROW_NUMBER_FOUR, col).text())
+                i_load = float(self.table_output.item(ROW_NUMBER_FIVE, col).text())
             except Exception:
                 continue
-            data.append((col, u_pit, i_pit, u_nagr, i_nagr))
-        return data
+            result.append((col, u_pit, i_pit, u_load, i_load))
+            print(result)
+        return result
 
-    def calculate_input_power(self):
-        for col, u_pit, i_pit, *_ in self._read_output_table():
-            p_in = u_pit * i_pit
-            self.table_output.setItem(5, col, QTableWidgetItem(f"{p_in:.3f}"))
+    def on_calc_input_power(self):
+        data = self._extract_output_table()
+        try:
+            pin, _, _, _ = self.controller.comp_stabilizer_metrics(data)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
+            return
+        for col, val in pin:
+            self.table_output.setItem(5, col, QTableWidgetItem(f"{val:.3f}"))
 
-    def calculate_output_power(self):
-        for col, *_, u_nagr, i_nagr in self._read_output_table():
-            p_out = u_nagr * i_nagr
-            self.table_output.setItem(6, col, QTableWidgetItem(f"{p_out:.3f}"))
+    def on_calc_output_power(self):
+        data = self._extract_output_table()
+        try:
+            _, pout, _, _ = self.controller.comp_stabilizer_metrics(data)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
+            return
+        for col, val in pout:
+            self.table_output.setItem(6, col, QTableWidgetItem(f"{val:.3f}"))
 
-    def calculate_efficiency(self):
-        for col, u_pit, i_pit, u_nagr, i_nagr in self._read_output_table():
-            p_in = u_pit * i_pit
-            p_out = u_nagr * i_nagr
-            eta = (p_out / p_in) if p_in != 0 else 0
-            self.table_output.setItem(7, col, QTableWidgetItem(f"{eta:.3f}"))
+    def on_calc_efficiency(self):
+        data = self._extract_output_table()
+        try:
+            _, _, eta, _ = self.controller.comp_stabilizer_metrics(data)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
+            return
+        for col, val in eta:
+            self.table_output.setItem(7, col, QTableWidgetItem(f"{val:.3f}"))
 
-    def calculate_stabilization_current(self):
-        for col, u_pit, i_pit, u_nagr, i_nagr in self._read_output_table():
-            i_st = (i_pit - i_nagr) * 1000
-            self.table_output.setItem(8, col, QTableWidgetItem(f"{i_st:.3f}"))
+    def on_calc_stabilization_current(self):
+        data = self._extract_output_table()
+        try:
+            _, _, _, ist = self.controller.comp_stabilizer_metrics(data)
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
+            return
+        for col, val in ist:
+            self.table_output.setItem(8, col, QTableWidgetItem(f"{val:.3f}"))
 
     def show_plot_vyh(self):
         Rn = []
@@ -273,10 +281,10 @@ class Lab4Window(QWidget):
                     continue
             Rn.append(r)
 
-            item_u = self.table_output.item(3, col)
+            item_u = self.table_output.item(ROW_NUMBER_FOUR, col)
             U_nagr.append(float(item_u.text()) if item_u else np.nan)
 
-            item_i = self.table_output.item(4, col)
+            item_i = self.table_output.item(ROW_NUMBER_FIVE, col)
             I_nagr.append(float(item_i.text()) if item_i else np.nan)
 
         Rn = np.array(Rn)
@@ -286,8 +294,7 @@ class Lab4Window(QWidget):
         mask1 = (~np.isnan(U_nagr)) & (~np.isnan(Rn)) & (Rn != np.inf)
         mask2 = (~np.isnan(U_nagr)) & (~np.isnan(I_nagr))
 
-        # --- График 1: Uнагр = f(Rн) ---
-        if mask1.sum() >= 2:
+        if mask1.sum() >= MIN_POINTS_TO_SHOW_PLOT:
             plt.figure(figsize=(8, 5))
             plt.plot(Rn[mask1], U_nagr[mask1], 'o-', label="Uнаг \u2192 Rн")
             plt.xlabel("Rн, Ом")
@@ -297,10 +304,9 @@ class Lab4Window(QWidget):
             plt.tight_layout()
             plt.show()
         else:
-            print("Недостаточно данных для графика Uнагр = f(Rн)")
+            QMessageBox.information(self, "Ошибка", "Недостаточно данных для графика Uнагр = f(Rн)")
 
-        # --- График 2: Uнагр = f(Iнагр) ---
-        if mask2.sum() >= 2:
+        if mask2.sum() >= MIN_POINTS_TO_SHOW_PLOT:
             plt.figure(figsize=(8, 5))
             plt.plot(I_nagr[mask2], U_nagr[mask2], 's-', label="Uнаг \u2192 Iнаг")
             plt.xlabel("Iнагр, мА")
@@ -310,5 +316,22 @@ class Lab4Window(QWidget):
             plt.tight_layout()
             plt.show()
         else:
-            print("Недостаточно данных для графика Uнагр = f(Iнагр)")
+            QMessageBox.information(self, "Ошибка", "Недостаточно данных для графика Uнагр = f(Iнагр)")
 
+    def show_formulas(self):
+        self.formulas_window = FormulasWindow(lab_number=4)
+        self.formulas_window.show()
+
+    def on_save_all(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
+        if not path:
+            return
+        tables = {
+            "Амплитудная х-ка": self.table_amplitude,
+            "Выходная х-ка": self.table_output,
+        }
+        try:
+            save_tables_to_excel(tables, path)
+            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", str(e))

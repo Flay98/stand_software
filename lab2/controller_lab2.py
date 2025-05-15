@@ -1,4 +1,3 @@
-from random import random
 from typing import List, Tuple
 
 import numpy as np
