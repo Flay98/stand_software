@@ -185,7 +185,7 @@ class Lab4Window(QWidget):
                 row_index += 1
 
         except RuntimeError as e:
-            print(str(e))
+            QMessageBox.information(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
 
         return row_index
 
@@ -200,7 +200,8 @@ class Lab4Window(QWidget):
                 col_index += 1
 
         except RuntimeError as e:
-            print(f"Ошибка при чтении со стенда: {e}")
+            QMessageBox.information(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
+
 
         return col_index
 
@@ -221,7 +222,6 @@ class Lab4Window(QWidget):
             except Exception:
                 continue
             result.append((col, u_pit, i_pit, u_load, i_load))
-            print(result)
         return result
 
     def on_calc_input_power(self):
