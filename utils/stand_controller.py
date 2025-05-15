@@ -1,7 +1,6 @@
 import struct
 import serial
 
-
 def parse_float(data_bytes):
     return struct.unpack('<f', data_bytes)[0]
 

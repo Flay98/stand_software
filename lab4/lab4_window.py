@@ -4,9 +4,9 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButt
     QMessageBox
 from matplotlib import pyplot as plt
 
-from paste_table_widget import PasteTableWidget
-from formulas_window import FormulasWindow
-from stand_controller import StandController
+from utils.paste_table_widget import PasteTableWidget
+from formulas.formulas_window import FormulasWindow
+from utils.stand_controller import StandController
 
 
 class Lab4Window(QWidget):

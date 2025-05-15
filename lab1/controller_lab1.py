@@ -2,11 +2,11 @@ from typing import Literal, Tuple, List
 
 import numpy as np
 
-from lab1.const import MIN_POINTS_TO_CALC_R_D, U_T
-from measurement import Measurement
-from lab1.calculations import calc_dynamic_resistance, compute_shockley_experimental, shockley_model, \
+from lab1.const_lab1 import MIN_POINTS_TO_CALC_R_D, U_T
+from utils.data.measurement import Measurement
+from lab1.calculations_lab1 import calc_dynamic_resistance, compute_shockley_experimental, shockley_model, \
     theoretical_dynamic_resistance
-from stand_controller import StandController
+from utils.stand_controller import StandController
 
 Target = Literal['si', 'sch']
 
@@ -19,7 +19,8 @@ class Lab1Controller:
         self.sch_data: list[Measurement] = []
 
     def add_measurement(self, target: Target) -> Measurement:
-        m = Measurement(1, 2, 3) #self.stand.get_voltage_current()
+        m = self.stand.get_voltage_current()
+
         if target == 'si':
             self.si_data.append(m)
         else:

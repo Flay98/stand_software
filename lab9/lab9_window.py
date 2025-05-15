@@ -5,9 +5,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from matplotlib import pyplot as plt
 
-from formulas_window import FormulasWindow
-from paste_table_widget import PasteTableWidget  # ваша реализация PasteTableWidget
-from stand_controller import StandController        # ваш контроллер для стенда
+from formulas.formulas_window import FormulasWindow
+from utils.paste_table_widget import PasteTableWidget  # ваша реализация PasteTableWidget
+from utils.stand_controller import StandController        # ваш контроллер для стенда
 
 
 class Lab9Window(QWidget):
@@ -228,7 +228,6 @@ class Lab9Window(QWidget):
         plt.show()
 
     def calc_S(self):
-        import matplotlib.pyplot as plt
         from PyQt6.QtWidgets import QMessageBox
 
         # 1) индексы «измерительных» строк: row 0…4 (Uзи = 3.77, 3.73, 3.65, 3.58, 3.49)

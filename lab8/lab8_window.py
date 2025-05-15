@@ -4,9 +4,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from formulas_window import FormulasWindow
-from paste_table_widget import PasteTableWidget
-from stand_controller import StandController
+from formulas.formulas_window import FormulasWindow
+from utils.paste_table_widget import PasteTableWidget
+from utils.stand_controller import StandController
 import matplotlib.pyplot as plt
 
 
@@ -103,14 +103,15 @@ class Lab8Window(QWidget):
     def read_both(self):
         """Снятие (u_in,u_out,i_out) и запись в нужные таблицы."""
         try:
-            u_in, u_out, i_out = 7, 2, 5 #self.controller.get_voltage_current()
+            u_in, u_out, i_out = self.controller.get_voltage_current()
+
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось снять данные: {e}")
             return
 
         # Проверка валидности u_in
-        in_row = self.input_row_map.get(float(u_in))
-        out_row = self.output_row_map.get(float(u_in))
+        in_row = self.input_row_map.get(float(u_in).__round__(1))
+        out_row = self.output_row_map.get(float(u_in).__round__(1))
         if in_row is None and out_row is None:
             QMessageBox.warning(
                 self, "Неверное Uкэ",

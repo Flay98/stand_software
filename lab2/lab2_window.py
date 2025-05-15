@@ -1,42 +1,57 @@
+from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTableWidgetItem
+    QPushButton, QTableWidgetItem, QFileDialog, QMessageBox
 )
-from paste_table_widget import PasteTableWidget
-from formulas_window import FormulasWindow
-from stand_controller import StandController
+
+from lab2.controller_lab2 import Lab2Controller
+from lab2.const_lab2 import *
+from utils.excel_timer_helper import update_timer_label, save_tables_to_excel
+from utils.paste_table_widget import PasteTableWidget
+from formulas.formulas_window import FormulasWindow
+
+from PyQt6.QtCore import QTimer
+from datetime import datetime
+
+import matplotlib.pyplot as plt
 
 
 class Lab2Window(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Лабораторная работа №2. Исследование стабилитрона")
-        self.resize(1000, 600)
-        self.controller = StandController()
+        self.controller = Lab2Controller()
+        self.start_time = datetime.now()
         self.row = 0
 
-        self.table_vah = PasteTableWidget(46, 3)
+        self.table_vah = PasteTableWidget(TABLE_ROW_COUNT, TABLE_COLUMN_COUNT)
         self.table_vah.setHorizontalHeaderLabels(["Uвх, В", "Uвых, В", "Iвых, мА"])
-        self.table_vah.setMaximumWidth(350)
+        self.table_vah.setMaximumWidth(TABLE_WIDTH)
 
-        self.table_rd = PasteTableWidget(46, 4)
+        self.table_rd = PasteTableWidget(TABLE_ROW_COUNT, TABLE_RESISTANCE_COLUMN_COUNT)
         self.table_rd.setHorizontalHeaderLabels(["Uвых, В", "Iвых, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
-        self.table_rd.setMaximumWidth(500)
+        self.table_rd.setMaximumWidth(TABLE_RESISTANCE_WIDTH)
+        self.avg_rd_label = QLabel("Среднее rd: - ")
 
         self.button_measure = QPushButton("Снять значение")
-        self.button_measure.clicked.connect(self.read_from_stand)  # пока пустой
+        self.button_measure.clicked.connect(self.read_from_stand)
 
         self.button_plot = QPushButton("Построить ВАХ стабилитрона")
-        self.button_plot.clicked.connect(self.plot_vah)  # пока пустой
+        self.button_plot.clicked.connect(self.plot_vah)
 
         self.button_calc_rd = QPushButton("Рассчитать динамическое сопротивление")
-        self.button_calc_rd.clicked.connect(self.calculate_rd)  # пока пустой
+        self.button_calc_rd.clicked.connect(self.calculate_rd)
 
         self.button_formulas = QPushButton("Формулы")
         self.button_formulas.clicked.connect(self.show_formulas_window)
 
         self.button_find_stabilization = QPushButton("Найти начало стабилизации")
         self.button_find_stabilization.clicked.connect(self.find_stabilization_start)
+
+        self.btn_save_all = QPushButton("Сохранить всё в Excel")
+        self.btn_save_all.clicked.connect(self.on_save_all)
+
+        self.timer_label = QLabel("Время выполнения работы 0:00:00")
 
         self.button_exit = QPushButton("Завершить выполнение работы")
         self.button_exit.clicked.connect(self.close)
@@ -65,26 +80,32 @@ class Lab2Window(QWidget):
         side_layout.addWidget(self.button_calc_rd)
         side_layout.addWidget(self.button_formulas)
         side_layout.addWidget(self.button_find_stabilization)
+        side_layout.addWidget(self.btn_save_all)
         side_layout.addStretch()
+        side_layout.addWidget(self.timer_label)
+        side_layout.addWidget(self.avg_rd_label)
         side_layout.addWidget(self.button_exit)
 
         main_layout.addLayout(table_layout, 3)
         main_layout.addLayout(side_layout, 1)
         self.setLayout(main_layout)
 
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: update_timer_label(self.start_time, self.timer_label))
+        timer.start(1000)
+
     def read_from_stand(self):
         try:
-            u_in, u_out, i_out = self.controller.get_voltage_current()
-            print(f"Uвх = {u_in:.3f} В, Uвых = {u_out:.3f} В, Iвых = {i_out:.3f} мА")
+            m = self.controller.measure()
 
             if self.row < self.table_vah.rowCount():
-                self.table_vah.setItem(self.row, 0, QTableWidgetItem(f"{u_in:.3f}"))
-                self.table_vah.setItem(self.row, 1, QTableWidgetItem(f"{u_out:.3f}"))
-                self.table_vah.setItem(self.row, 2, QTableWidgetItem(f"{i_out:.3f}"))
+                self.table_vah.setItem(self.row, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.3f}"))
+                self.table_vah.setItem(self.row, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
+                self.table_vah.setItem(self.row, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 self.row += 1
 
         except RuntimeError as e:
-            print(f"Ошибка при считывании данных со стенда: {e}")
+            QMessageBox.information(self, "Ошибка", f"Ошибка при считывании данных со стенда: {e}")
 
     def plot_vah(self):
         u_vals = []
@@ -92,8 +113,8 @@ class Lab2Window(QWidget):
 
         for row in range(self.table_vah.rowCount()):
             try:
-                u_item = self.table_vah.item(row, 1)
-                i_item = self.table_vah.item(row, 2)
+                u_item = self.table_vah.item(row, COLUMN_NUMBER_TWO)
+                i_item = self.table_vah.item(row, COLUMN_NUMBER_THREE)
                 if u_item and i_item:
                     u = float(u_item.text())
                     i = float(i_item.text())
@@ -102,11 +123,11 @@ class Lab2Window(QWidget):
             except ValueError:
                 continue
 
-        if len(u_vals) < 2:
-            print("Недостаточно данных для построения графика")
+        if len(u_vals) < MIN_POINTS_TO_SHOW_PLOT:
+            QMessageBox.information(self, "Ошибка", f"Недостаточно данных для построения графика. Минимум точек: "
+                                                    f"{MIN_POINTS_TO_SHOW_PLOT}")
             return
 
-        import matplotlib.pyplot as plt
         plt.figure(figsize=(8, 6))
         plt.plot(u_vals, i_vals, marker='o', linestyle='-', label='ВАХ стабилитрона')
         plt.xlabel("Uвых, В")
@@ -117,91 +138,81 @@ class Lab2Window(QWidget):
         plt.tight_layout()
         plt.show()
 
-    def calculate_rd(self):
+    def get_ui_data_from_table(self, table):
         U = []
-        I_mA = []
-
-        for row in range(self.table_vah.rowCount()):
+        I = []
+        for row in range(table.rowCount()):
             try:
-                u_item = self.table_vah.item(row, 1)
-                i_item = self.table_vah.item(row, 2)
-                if u_item and i_item:
-                    u = float(u_item.text())
-                    i = float(i_item.text())
+                u_val = table.item(row, COLUMN_NUMBER_TWO)
+                i_val = table.item(row, COLUMN_NUMBER_THREE)
+                if u_val is not None and i_val is not None:
+                    u = float(u_val.text())
+                    i = float(i_val.text())
                     U.append(u)
-                    I_mA.append(i)
+                    I.append(i)
             except ValueError:
                 continue
+        return U, I
 
-        if len(U) < 2:
-            print("Недостаточно данных для расчёта rd")
+    def calculate_rd(self):
+
+        U, I_mA = self.get_ui_data_from_table(self.table_vah)
+
+        try:
+            rows = self.controller.compute_rd_from_lists(
+                u_list=U,
+                i_mA_list=I_mA,
+                n=STAB_N,
+                Ut=U_T
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        # Очистка таблицы
         self.table_rd.clearContents()
-        self.table_rd.setRowCount(len(U) - 1)
-
-        Ut = 0.0253
-        n = 1.0
-
-        for i in range(len(U) - 1):
-            try:
-                delta_U = U[i + 1] - U[i]
-                delta_I = (I_mA[i + 1] - I_mA[i]) * 0.001
-                rd_delta = delta_U / delta_I if delta_I != 0 else float('inf')
-
-                I_A = I_mA[i] * 0.001
-                rd_theor = (n * Ut) / I_A if I_A > 0 else float('inf')
-
-                self.table_rd.setItem(i, 0, QTableWidgetItem(f"{U[i]:.3f}"))
-                self.table_rd.setItem(i, 1, QTableWidgetItem(f"{I_mA[i]:.3f}"))
-                self.table_rd.setItem(i, 2, QTableWidgetItem(f"{rd_delta:.3f}"))
-                self.table_rd.setItem(i, 3, QTableWidgetItem(f"{rd_theor:.3f}"))
-
-            except Exception as e:
-                print(f"Ошибка на строке {i}: {e}")
-
-    def show_formulas_window(self):
-        self.formulas_window = FormulasWindow(lab_number=2)
-        self.formulas_window.show()
+        self.table_rd.setRowCount(len(rows))
+        for r, (u0, i0, rd_d, rd_t) in enumerate(rows):
+            self.table_rd.setItem(r, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{u0:.3f}"))
+            self.table_rd.setItem(r, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{i0:.3f}"))
+            self.table_rd.setItem(r, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{rd_d:.3f}"))
+            self.table_rd.setItem(r, COLUMN_NUMBER_FOUR, QTableWidgetItem(f"{rd_t:.3f}"))
 
     def find_stabilization_start(self):
-        u_vals = []
-        i_vals = []
+        u_vals, i_vals = self.get_ui_data_from_table(self.table_vah)
 
-        for row in range(self.table_vah.rowCount()):
-            try:
-                u = float(self.table_vah.item(row, 1).text())
-                i = float(self.table_vah.item(row, 2).text())
-                u_vals.append(u)
-                i_vals.append(i)
-            except:
-                continue
-
-        if len(u_vals) < 2:
-            print("Недостаточно данных для анализа стабилизации")
+        try:
+            idx, u_arr, i_arr = self.controller.compute_stabilization_from_lists(
+                u_list=u_vals,
+                i_list=i_vals,
+                min_rd=MIN_RD_CONDITION
+            )
+        except ValueError as e:
+            QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        stab_start_index = None
-        for i in range(len(u_vals) - 1):
-            delta_u = u_vals[i + 1] - u_vals[i]
-            delta_i = (i_vals[i + 1] - i_vals[i]) * 0.001  # мА → А
-            if delta_i == 0:
-                continue
-            rd = delta_u / delta_i
-            if rd < 5:
-                stab_start_index = i
-                break
-
-        if stab_start_index is None:
-            print("Участок стабилизации не найден")
+        if idx < 0:
+            QMessageBox.information(self, "Ошибка", "Участок стабилизации не найден")
             return
 
-        self.plot_stabilization_region(u_vals, i_vals, stab_start_index)
-        self.recalculate_rd_for_stabilization(u_vals, i_vals, stab_start_index)
+        self.plot_stabilization_region(u_arr, i_arr, idx)
+
+        rows = self.controller.compute_rd_from_lists(
+            u_list=u_vals[idx:],
+            i_mA_list=i_vals[idx:],
+            n=STAB_N,
+            Ut=U_T
+        )
+        rd_avg = self.controller.average_rd(rows)
+
+        self.avg_rd_label.setText(f"Среднее rd на участке стабилизации: {rd_avg:.3f} Ω")
+
+        highlight_brush = QBrush(QColor(255, 255, 0))
+        for col in range(self.table_rd.columnCount()):
+            self.table_rd.item(idx, col).setBackground(highlight_brush)
+
+        self.table_rd.scrollToItem(self.table_rd.item(idx, 0))
 
     def plot_stabilization_region(self, u_vals, i_vals, stab_start_index):
-        import matplotlib.pyplot as plt
 
         plt.figure(figsize=(8, 6))
         plt.plot(u_vals, i_vals, 'o-', label="ВАХ стабилитрона")
@@ -222,38 +233,20 @@ class Lab2Window(QWidget):
         plt.tight_layout()
         plt.show()
 
-    def recalculate_rd_for_stabilization(self, u_vals, i_vals, start_index):
-        Ut = 0.0253
-        n = 1.0
+    def show_formulas_window(self):
+        self.formulas_window = FormulasWindow(lab_number=2)
+        self.formulas_window.show()
 
-        u_slice = u_vals[start_index:]
-        i_slice = i_vals[start_index:]
-
-        self.table_rd.clearContents()
-        self.table_rd.setRowCount(len(u_slice) - 1)
-
-        rd_list = []
-
-        for i in range(len(u_slice) - 1):
-            try:
-                delta_U = u_slice[i + 1] - u_slice[i]
-                delta_I = (i_slice[i + 1] - i_slice[i]) * 0.001
-                rd_delta = delta_U / delta_I if delta_I != 0 else float('inf')
-                rd_list.append(rd_delta)
-
-                I_A = i_slice[i] * 0.001
-                rd_theor = (n * Ut) / I_A if I_A > 0 else float('inf')
-
-                self.table_rd.setItem(i, 0, QTableWidgetItem(f"{u_slice[i]:.3f}"))
-                self.table_rd.setItem(i, 1, QTableWidgetItem(f"{i_slice[i]:.3f}"))
-                self.table_rd.setItem(i, 2, QTableWidgetItem(f"{rd_delta:.3f}"))
-                self.table_rd.setItem(i, 3, QTableWidgetItem(f"{rd_theor:.3f}"))
-
-            except Exception as e:
-                print(f"Ошибка при расчёте rd: {e}")
-
-        if rd_list:
-            rd_avg = sum(rd_list) / len(rd_list)
-            print(f"Среднее rd по участку стабилизации (ΔU/ΔI): {rd_avg:.3f} Ом")
-        else:
-            print("Не удалось вычислить среднее rd: нет данных.")
+    def on_save_all(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
+        if not path:
+            return
+        tables = {
+            "vah": self.table_vah,
+            "rd": self.table_rd,
+        }
+        try:
+            save_tables_to_excel(tables, path)
+            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", str(e))

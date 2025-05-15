@@ -1,17 +1,22 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTableWidgetItem, QTableWidget, \
-    QMessageBox
+    QMessageBox, QFileDialog
 from matplotlib import pyplot as plt
 
-from formulas_window import FormulasWindow
-from lab1.controller import Lab1Controller
-from paste_table_widget import PasteTableWidget
-from lab1.const import *
+from formulas.formulas_window import FormulasWindow
+from lab1.controller_lab1 import Lab1Controller
+from utils.excel_timer_helper import update_timer_label, save_tables_to_excel
+from utils.paste_table_widget import PasteTableWidget
+from lab1.const_lab1 import *
+
+from PyQt6.QtCore import QTimer
+from datetime import datetime
 
 
 class Lab1Window(QWidget):
     def __init__(self):
         super().__init__()
         self.controller = Lab1Controller()
+        self.start_time = datetime.now()
         self.setWindowTitle("Лабораторная работа №1. Исследование ВАХ диодов")
 
         self.row = 0
@@ -69,6 +74,11 @@ class Lab1Window(QWidget):
         self.button_formulas = QPushButton("Формулы")
         self.button_formulas.clicked.connect(self.show_formulas_window)
 
+        self.btn_save_all = QPushButton("Сохранить всё в Excel")
+        self.btn_save_all.clicked.connect(self.on_save_all)
+
+        self.timer_label = QLabel("Время выполнения работы 0:00:00")
+
         self.button_exit = QPushButton("Завершить выполнение работы")
         self.button_exit.clicked.connect(self.close)
 
@@ -115,14 +125,20 @@ class Lab1Window(QWidget):
         side_layout.addWidget(self.button_compare_Si_theor_graph)
         side_layout.addWidget(self.button_calc_dSi_theor)
         side_layout.addWidget(self.button_formulas)
+        side_layout.addWidget(self.btn_save_all)
 
         side_layout.addStretch()
+        side_layout.addWidget(self.timer_label)
         side_layout.addWidget(self.button_exit)
 
         main_layout.addLayout(table_layout, 3)
         main_layout.addLayout(side_layout, 1)
 
         self.setLayout(main_layout)
+
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: update_timer_label(self.start_time, self.timer_label))
+        timer.start(1000)
 
     def on_compare_exp_theor(self):
         try:
@@ -179,11 +195,10 @@ class Lab1Window(QWidget):
     def read_and_append_row(self, table, target, row_index):
         try:
             m = self.controller.add_measurement(target)
-
             if row_index < table.rowCount():
-                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.3f}"))
-                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
-                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m[0]:.1f}"))
+                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m[1]:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m[2]:.3f}"))
                 row_index += 1
 
         except RuntimeError as e:
@@ -294,4 +309,21 @@ class Lab1Window(QWidget):
     def show_formulas_window(self):
         self.formulas_window = FormulasWindow(lab_number=1)
         self.formulas_window.show()
+
+    def on_save_all(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
+        if not path:
+            return
+        tables = {
+            "Si": self.table_si,
+            "Sch": self.table_Schottky,
+            "rd_Si": self.table_dSi,
+            "rd_Sch": self.table_dSchottky,
+        }
+        try:
+            save_tables_to_excel(tables, path)
+            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", str(e))
+
 
