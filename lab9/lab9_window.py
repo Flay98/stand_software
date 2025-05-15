@@ -1,25 +1,30 @@
+from datetime import datetime
+from typing import Dict, Tuple, List
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTableWidgetItem, QMessageBox
+    QPushButton, QTableWidgetItem, QMessageBox, QFileDialog
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from matplotlib import pyplot as plt
+from lab9.const_lab9 import *
 
 from formulas.formulas_window import FormulasWindow
-from utils.paste_table_widget import PasteTableWidget  # ваша реализация PasteTableWidget
-from utils.stand_controller import StandController        # ваш контроллер для стенда
+from lab9.controller_lab9 import Lab9Controller
+from utils.excel_timer_helper import save_tables_to_excel, update_timer_label
+from utils.paste_table_widget import PasteTableWidget
 
 
 class Lab9Window(QWidget):
     def __init__(self):
         super().__init__()
         self.formulas_window = FormulasWindow(lab_number=9)
-        self.controller = StandController()
+        self.controller = Lab9Controller()
         self.setWindowTitle("Исследование статических вольтамперных характеристик полевого транзистора")
-        self.resize(1200, 400)
+        self.start_time = datetime.now()
 
         headers = ["Uзи, В", "Uси, В"] + ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0.5", "0.2", "0.1"]
-        self.table = PasteTableWidget(6, len(headers))
+        self.table = PasteTableWidget(TABLE_ROW_COUNT, len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setSpan(0, 1, 5, 1)
         hdr = QTableWidgetItem("Ic, мA")
@@ -27,43 +32,61 @@ class Lab9Window(QWidget):
         hdr.setFlags(hdr.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(0, 1, hdr)
 
-        # строковые метки (Uзи вручную)
-        # оставляем их пустыми — студенты заполнят вручную
-        for r in range(5):
+        for r in range(TABLE_ROW_COUNT - 1):
             item = QTableWidgetItem("")
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(r, 0, item)
-        # последняя строка — Uпор, В, тоже вручную или можно по коду
+            self.table.setItem(r, COLUMN_NUMBER_ONE, item)
+
         item = QTableWidgetItem("Uпор, В")
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self.table.setItem(5, 0, item)
+        self.table.setItem(ROW_NUMBER_SIX, COLUMN_NUMBER_ONE, item)
 
-        self.current_row = 0  # начинаем со второй строки
-        self.current_col = 2  # после Uзи и Uси
+        self.table_resistance = PasteTableWidget()
+        self.table_resistance.setColumnCount(3)
+        self.table_resistance.setHorizontalHeaderLabels(["Uзи, В", "Rₒм, Ω", "Rдин, Ω"])
 
-        # Снять значение
+        self.table_s = PasteTableWidget()
+        self.table_s.setColumnCount(12)
+        self.table_s.setHorizontalHeaderLabels(["9", "8", "7", "6", "5", "4", "3", "2", "1", "0.5", "0.2", "0.1"])
+
+        self.current_row = 0
+        self.current_col = 2
+
         self.btn_read = QPushButton("Снять значение")
         self.btn_read.clicked.connect(self.read_and_append)
 
-        # Новые кнопки справа
         self.btn_plot_g = QPushButton("Стокозатворная характеристика")
         self.btn_plot_g.clicked.connect(self.plot_gate)
+
         self.btn_plot_out = QPushButton("Выходная характеристика")
         self.btn_plot_out.clicked.connect(self.plot_output)
+
         self.btn_calc_S = QPushButton("Расчет крутизны S")
-        self.btn_calc_S.clicked.connect(self.calc_S)
+        self.btn_calc_S.clicked.connect(self.on_calc_s)
+
         self.btn_calc_r = QPushButton("Расчет сопротивлений")
-        self.btn_calc_r.clicked.connect(self.calc_resistance)
+        self.btn_calc_r.clicked.connect(self.on_calc_resistance)
+
         self.button_formulas = QPushButton("Формулы")
         self.button_formulas.clicked.connect(self.show_formulas)
+
+        self.btn_save_all = QPushButton("Сохранить всё в Excel")
+        self.btn_save_all.clicked.connect(self.on_save_all)
+
+        self.timer_label = QLabel("Время выполнения работы 0:00:00")
+
         self.btn_exit = QPushButton("Завершить работу")
         self.btn_exit.clicked.connect(self.close)
 
-        # Layout
         left = QVBoxLayout()
         left.addWidget(QLabel("Стокозатворная и выходная характеристика полевого транзистора"))
         left.addWidget(self.table)
         left.addWidget(self.btn_read)
+
+        left.addWidget(QLabel("Сопротивления"))
+        left.addWidget(self.table_resistance)
+        left.addWidget(QLabel("Крутизна S"))
+        left.addWidget(self.table_s)
 
         right = QVBoxLayout()
         right.addWidget(self.btn_plot_g)
@@ -71,20 +94,22 @@ class Lab9Window(QWidget):
         right.addWidget(self.btn_calc_S)
         right.addWidget(self.btn_calc_r)
         right.addWidget(self.button_formulas)
+        right.addWidget(self.btn_save_all)
         right.addStretch()
+        right.addWidget(self.timer_label)
         right.addWidget(self.btn_exit)
 
         main = QHBoxLayout(self)
         main.addLayout(left, 4)
         main.addLayout(right, 1)
 
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: update_timer_label(self.start_time, self.timer_label))
+        timer.start(1000)
+
     def read_and_append(self):
-        """
-        Снимаем Uin и Iout, проверяем, совпадает ли Uin с header текущей колонки,
-        и при совпадении записываем Iout в (current_row,current_col).
-        """
         try:
-            u_in, u_out, i_out = self.controller.get_voltage_current()
+            m = self.controller.measure()
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось снять данные: {e}")
             return
@@ -92,7 +117,6 @@ class Lab9Window(QWidget):
         col = self.current_col
         max_col = self.table.columnCount()
 
-        # 1) Считаем ожидаемое Usi из заголовка этой колонки
         hdr_item = self.table.horizontalHeaderItem(col)
         try:
             expected_u = float(hdr_item.text())
@@ -101,18 +125,16 @@ class Lab9Window(QWidget):
                                 f"Невалидный header в колонке {col}")
             return
 
-        # 2) Сверяем с тем, что вернулось из стенда
-        if abs(expected_u - u_in) > 1e-3:  # допустим дельта 1 мВ
+        if abs(expected_u - m.u_in) > THRESHOLD:
             QMessageBox.warning(
                 self, "Несоответствие напряжения",
-                f"Ожидалось Uси = {expected_u:.3f} В, а снято {u_in:.3f} В.\n"
+                f"Ожидалось Uси = {expected_u:.3f} В, а снято {m.u_in:.3f} В.\n"
                 "Проверьте установку на стенде."
             )
             return
 
-        # 3) Записываем Iк (i_out) в таблицу
         if col < max_col:
-            item = QTableWidgetItem(f"{i_out:.3f}")
+            item = QTableWidgetItem(f"{m.i_out_mA:.3f}")
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(self.current_row, col, item)
         else:
@@ -120,8 +142,6 @@ class Lab9Window(QWidget):
                                 "Все колонки для Ic заполнены.")
             return
 
-        # 4) Сдвигаем указатель: вправо, или — если это был последний столбец —
-        #    на новую строку и в первую колонку данных
         self.current_col += 1
         if self.current_col >= max_col:
             self.current_col = 2
@@ -132,39 +152,34 @@ class Lab9Window(QWidget):
 
     def plot_gate(self):
 
-        # 1) X-координаты: ручные Uзи из столбца 0, строки 0–4
         Uzi = []
-        for row in range(5):
-            it = self.table.item(row, 0)
+        for row in range(TABLE_ROW_COUNT - 1):
+            it = self.table.item(row, COLUMN_NUMBER_ONE)
             try:
                 Uzi.append(float(it.text()))
             except Exception:
                 Uzi.append(None)
 
-        # 2) Нужные значения Uси
         wanted = {"0.1", "2", "5", "8"}
 
-        # 3) Для каждого столбца 2…N фильтруем по заголовку
-        for col in range(2, self.table.columnCount()):
+        for col in range(START_COLUMN, self.table.columnCount()):
             hdr = self.table.horizontalHeaderItem(col).text()
             if hdr not in wanted:
                 continue
             Usi = float(hdr)
 
-            # собираем Ic по этой колонке
             Ic = []
-            for row in range(5):
+            for row in range(TABLE_ROW_COUNT - 1):
                 it = self.table.item(row, col)
                 try:
                     Ic.append(float(it.text()))
                 except Exception:
                     Ic.append(None)
 
-            # фильтруем пары
             x = [u for u, i in zip(Uzi, Ic) if u is not None and i is not None]
             y = [i for u, i in zip(Uzi, Ic) if u is not None and i is not None]
 
-            if len(x) >= 2:
+            if len(x) >= MIN_POINTS_TO_SHOW_PLOT:
                 plt.plot(x, y, marker='o', linestyle='-', label=f"Uси={Usi:.1f} В")
 
         plt.xlabel("Uзи, В")
@@ -177,19 +192,17 @@ class Lab9Window(QWidget):
 
     def plot_output(self):
 
-        # 1) Прочитаем массив Uси (из хедеров колонок 2…N)
         Usi = []
-        for col in range(2, self.table.columnCount()):
+        for col in range(START_COLUMN, self.table.columnCount()):
             hdr = self.table.horizontalHeaderItem(col).text()
             try:
                 Usi.append(float(hdr))
             except ValueError:
                 Usi.append(None)
 
-        # 2) Для каждой строки-данных (rows 1…5) строим свою ветку Ic = f(Usi)
-        for row in range(0, self.table.rowCount()):
-            # 2a) получаем Uзи из колонки 0
-            it_uzi = self.table.item(row, 0)
+        for row in range(ROW_NUMBER_ONE, self.table.rowCount()):
+
+            it_uzi = self.table.item(row, COLUMN_NUMBER_ONE)
             if not it_uzi or not it_uzi.text():
                 continue
             try:
@@ -197,9 +210,8 @@ class Lab9Window(QWidget):
             except ValueError:
                 continue
 
-            # 2b) собираем пары (Usi, Ic) для этой строки
             xs, ys = [], []
-            for idx, col in enumerate(range(2, self.table.columnCount())):
+            for idx, col in enumerate(range(START_COLUMN, self.table.columnCount())):
                 it_ic = self.table.item(row, col)
                 if not it_ic or not it_ic.text():
                     continue
@@ -213,12 +225,10 @@ class Lab9Window(QWidget):
                 xs.append(usi)
                 ys.append(ic)
 
-            # 2c) рисуем, если есть хотя бы две точки
-            if len(xs) >= 2:
+            if len(xs) >= MIN_POINTS_TO_SHOW_PLOT:
                 plt.plot(xs, ys, marker='o', linestyle='-',
                          label=f"Uзи = {Uzi:.2f} В")
 
-        # 3) Оформление и вывод
         plt.xlabel("Uси, В")
         plt.ylabel("Ic, мА")
         plt.title("Выходная характеристика полевого транзистора")
@@ -227,131 +237,116 @@ class Lab9Window(QWidget):
         plt.tight_layout()
         plt.show()
 
-    def calc_S(self):
-        from PyQt6.QtWidgets import QMessageBox
+    def _extract_s_data(self) -> Dict[float, Tuple[List[float], List[float]]]:
 
-        # 1) индексы «измерительных» строк: row 0…4 (Uзи = 3.77, 3.73, 3.65, 3.58, 3.49)
+        data = {}
         meas_rows = list(range(0, 5))
-
-        results = {}  # Uси → список S для соседних пар
-
-        # 2) пробегаем по всем столбцам с Uси (колонки 2…end)
-        for col in range(2, self.table.columnCount()):
-            hdr = self.table.horizontalHeaderItem(col).text()
+        for col in range(START_COLUMN, self.table.columnCount()):
+            hdr_item = self.table.horizontalHeaderItem(col)
+            if not hdr_item:
+                continue
             try:
-                Usi = float(hdr)
+                Uce = float(hdr_item.text())
             except ValueError:
                 continue
 
-            S_list = []
-            # 3) для каждой соседней пары строк вычисляем S = ΔIc/ΔUzi
-            for i in range(len(meas_rows) - 1):
-                r1, r2 = meas_rows[i], meas_rows[i+1]
-                item_ic1 = self.table.item(r1, col)
-                item_ic2 = self.table.item(r2, col)
-                item_u1  = self.table.item(r1, 0)
-                item_u2  = self.table.item(r2, 0)
-                # пропускаем, если чего-то нет
-                if not all([item_ic1, item_ic2, item_u1, item_u2]):
+            Ube_vals, Ic_vals = [], []
+            for row in meas_rows:
+                item_u = self.table.item(row, COLUMN_NUMBER_ONE)
+                item_ic = self.table.item(row, col)
+                if not item_u or not item_ic:
                     continue
                 try:
-                    Ic1 = float(item_ic1.text())
-                    Ic2 = float(item_ic2.text())
-                    U1  = float(item_u1.text())
-                    U2  = float(item_u2.text())
+                    Ube_vals.append(float(item_u.text()))
+                    Ic_vals.append(float(item_ic.text()))
                 except ValueError:
                     continue
-                dI = Ic2 - Ic1
-                dU = U2 - U1
-                if abs(dU) < 1e-9:
-                    continue
-                S_list.append(dI / dU)
 
-            if S_list:
-                results[Usi] = S_list
+            data[Uce] = (Ube_vals, Ic_vals)
+        return data
 
-        # 4) Выводим в окно
-        if not results:
-            QMessageBox.information(self, "Расчет S", "Нет достаточных данных для расчёта.")
+    def on_calc_s(self):
+        data = self._extract_s_data()
+        try:
+            results = self.controller.compute_transconductance_S(data)
+        except ValueError as e:
+            QMessageBox.information(self, "Расчет S", str(e))
             return
 
-        lines = []
-        for Usi, S_vals in results.items():
-            seq = ", ".join(f"{s:.3f}" for s in S_vals)
-            lines.append(f"Uси={Usi:.2f} В → S = [{seq}] мА/В")
-        QMessageBox.information(self, "Крутизна S", "\n".join(lines))
+        Uces = list(results.keys())
+        s_lists = list(results.values())
+        ube_vals = next(iter(data.values()))[0]
 
-    def calc_resistance(self):
-        from PyQt6.QtWidgets import QMessageBox
+        self.table_s.setColumnCount(len(Uces))
+        self.table_s.setRowCount(len(s_lists[0]))
+        row_labels = [
+            f"{ube_vals[i]:.2f}→{ube_vals[i + 1]:.2f}"
+            for i in range(self.table_s.rowCount())
+        ]
+        self.table_s.setVerticalHeaderLabels(row_labels)
+        for col, S_vals in enumerate(s_lists):
+            for row, s in enumerate(S_vals):
+                item = QTableWidgetItem(f"{s:.3f}")
+                self.table_s.setItem(row, col, item)
 
+    def _extract_resistance_data(self):
+        hdr_to_col = {
+            self.table.horizontalHeaderItem(c).text(): c
+            for c in range(START_COLUMN, self.table.columnCount())
+            if self.table.horizontalHeaderItem(c)
+        }
+        needed = ["0.1", "0.5", "6", "9"]
+        missing = [h for h in needed if h not in hdr_to_col]
+        if missing:
+            raise ValueError(f"Не найдены столбцы: {', '.join(missing)}")
+
+        data = []
+        for row in range(ROW_NUMBER_ONE, ROW_NUMBER_SIX):
+            item_u = self.table.item(row, COLUMN_NUMBER_ONE)
+            if not item_u or not item_u.text():
+                continue
+            Uzi = float(item_u.text())
+
+            I_lo = float(self.table.item(row, hdr_to_col["0.1"]).text() or 0)
+            I_hi = float(self.table.item(row, hdr_to_col["0.5"]).text() or 0)
+            I6 = float(self.table.item(row, hdr_to_col["6"]).text() or 0)
+            I9 = float(self.table.item(row, hdr_to_col["9"]).text() or 0)
+
+            data.append((Uzi, I_lo, I_hi, I6, I9))
+        return data
+
+    def on_calc_resistance(self):
         try:
-            # 1) Собираем мапу header→col
-            hdr_to_col = {
-                self.table.horizontalHeaderItem(c).text(): c
-                for c in range(2, self.table.columnCount())
-            }
+            data = self._extract_resistance_data()
+            results = self.controller.comp_resistances(data)
+        except ValueError as e:
+            QMessageBox.warning(self, "Расчет сопротивлений", str(e))
+            return
 
-            # 2) Проверяем наличие нужных колонок
-            needed_ohm = ["0.1", "0.5"]  # точки для омического
-            needed_dyn = ["6", "9"]      # точки для динамического
-            missing = [h for h in (needed_ohm + needed_dyn) if h not in hdr_to_col]
-            if missing:
-                QMessageBox.warning(
-                    self, "Недостаток столбцов",
-                    f"Не найдены столбцы: {', '.join(missing)}"
-                )
-                return
-
-            # 3) Собираем результаты
-            results = []
-            for row in range(0, 5):  # только экспериментальные строки Uзи
-                it_uzi = self.table.item(row, 0)
-                if not it_uzi or not it_uzi.text():
-                    continue
-                Uzi = float(it_uzi.text())
-
-                # --- Омическое R: (0.5−0.1) / (I0.5 − I0.1) ---
-                c_lo, c_hi = hdr_to_col["0.1"], hdr_to_col["0.5"]
-                i_lo_item = self.table.item(row, c_lo)
-                i_hi_item = self.table.item(row, c_hi)
-                I_lo = float(i_lo_item.text()) if i_lo_item and i_lo_item.text() else None
-                I_hi = float(i_hi_item.text()) if i_hi_item and i_hi_item.text() else None
-
-                if I_lo is None or I_hi is None or abs(I_hi - I_lo) < 1e-9:
-                    R_ohm = None
-                else:
-                    R_ohm = (0.5 - 0.1) / ((I_hi - I_lo) / 1000)
-
-                # --- Динамическое R: (9−6) / (I9 − I6) ---
-                c6, c9 = hdr_to_col["6"], hdr_to_col["9"]
-                i6_item = self.table.item(row, c6)
-                i9_item = self.table.item(row, c9)
-                I6 = float(i6_item.text()) if i6_item and i6_item.text() else None
-                I9 = float(i9_item.text()) if i9_item and i9_item.text() else None
-
-                if I6 is None or I9 is None or abs(I9 - I6) < 1e-9:
-                    R_dyn = None
-                else:
-                    R_dyn = (9.0 - 6.0) / ((I9 - I6) / 1000)
-
-                results.append((Uzi, R_ohm, R_dyn))
-
-            # 4) Вывод
-            if not results:
-                QMessageBox.information(self, "Расчёт сопротивлений",
-                                        "Нет достаточных данных для расчёта.")
-                return
-
-            text = ""
-            for Uzi, Rohm, Rdyn in results:
-                s_ohm = f"{Rohm:.2f} Ω" if Rohm is not None else "n/a"
-                s_dyn = f"{Rdyn:.2f} Ω" if Rdyn is not None else "n/a"
-                text += f"Uзи={Uzi:.2f} В: Rₒм={s_ohm}, R_дин={s_dyn}\n"
-
-            QMessageBox.information(self, "Сопротивления", text.rstrip())
-
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка расчёта", str(e))
+        self.table_resistance.setRowCount(len(results))
+        for r, (Uzi, R_ohm, R_dyn) in enumerate(results):
+            self.table_resistance.setItem(r, 0, QTableWidgetItem(f"{Uzi:.2f}"))
+            self.table_resistance.setItem(r, 1, QTableWidgetItem(
+                f"{R_ohm:.2f}" if R_ohm is not None else "n/a"
+            ))
+            self.table_resistance.setItem(r, 2, QTableWidgetItem(
+                f"{R_dyn:.2f}" if R_dyn is not None else "n/a"
+            ))
 
     def show_formulas(self):
         self.formulas_window.show()
+
+    def on_save_all(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
+        if not path:
+            return
+        tables = {
+            "Стокозатворная": self.table,
+            "Крутизна": self.table_s,
+            "Сопротивления": self.table_resistance
+        }
+        try:
+            save_tables_to_excel(tables, path)
+            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", str(e))
