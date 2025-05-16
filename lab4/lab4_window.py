@@ -13,6 +13,8 @@ from formulas.formulas_window import FormulasWindow
 from PyQt6.QtCore import QTimer
 from datetime import datetime
 
+from utils.table_validator import NumberDelegate
+
 
 class Lab4Window(QWidget):
     def __init__(self):
@@ -44,6 +46,10 @@ class Lab4Window(QWidget):
             item = QTableWidgetItem(text)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table_output.setItem(ROW_NUMBER_ONE, col, item)
+
+        delegate = NumberDelegate(self)
+        self.table_amplitude.setItemDelegate(delegate)
+        self.table_output.setItemDelegate(delegate)
 
         self.button_plot_vh = QPushButton("Зависимость напряжения на нагрузке от напряжения питания")
         self.button_plot_vh.clicked.connect(self.show_plot_vh)

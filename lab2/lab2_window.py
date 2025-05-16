@@ -15,6 +15,8 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 
+from utils.table_validator import NumberDelegate
+
 
 class Lab2Window(QWidget):
     def __init__(self):
@@ -32,6 +34,10 @@ class Lab2Window(QWidget):
         self.table_rd.setHorizontalHeaderLabels(["Uвых, В", "Iвых, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
         self.table_rd.setMaximumWidth(TABLE_RESISTANCE_WIDTH)
         self.avg_rd_label = QLabel("Среднее rd: - ")
+
+        delegate = NumberDelegate(self)
+        self.table_vah.setItemDelegate(delegate)
+        self.table_rd.setItemDelegate(delegate)
 
         self.button_measure = QPushButton("Снять значение")
         self.button_measure.clicked.connect(self.read_from_stand)

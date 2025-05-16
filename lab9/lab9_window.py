@@ -13,6 +13,7 @@ from formulas.formulas_window import FormulasWindow
 from lab9.controller_lab9 import Lab9Controller
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.paste_table_widget import PasteTableWidget
+from utils.table_validator import NumberDelegate
 
 
 class Lab9Window(QWidget):
@@ -48,6 +49,11 @@ class Lab9Window(QWidget):
         self.table_s = PasteTableWidget()
         self.table_s.setColumnCount(12)
         self.table_s.setHorizontalHeaderLabels(["9", "8", "7", "6", "5", "4", "3", "2", "1", "0.5", "0.2", "0.1"])
+
+        delegate = NumberDelegate(self)
+        self.table.setItemDelegate(delegate)
+        self.table_s.setItemDelegate(delegate)
+        self.table_resistance.setItemDelegate(delegate)
 
         self.current_row = 0
         self.current_col = 2

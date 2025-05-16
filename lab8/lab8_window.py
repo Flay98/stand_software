@@ -11,6 +11,7 @@ from utils.paste_table_widget import PasteTableWidget
 import matplotlib.pyplot as plt
 from PyQt6.QtCore import QTimer
 from datetime import datetime
+from utils.table_validator import NumberDelegate
 
 
 class Lab8Window(QWidget):
@@ -51,6 +52,10 @@ class Lab8Window(QWidget):
             item = QTableWidgetItem(f"{u_val:.1f}")
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table_output.setItem(row, 0, item)
+
+        delegate = NumberDelegate(self)
+        self.table_input.setItemDelegate(delegate)
+        self.table_output.setItemDelegate(delegate)
 
         self.next_input_col = {r: 2 for r in INPUT_ROW_MAP.values()}
         self.next_output_col = {r: 2 for r in OUTPUT_ROW_MAP.values()}

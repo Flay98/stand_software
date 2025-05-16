@@ -7,7 +7,7 @@ def calc_rd(u: np.ndarray, i_mA: np.ndarray, n: float, Ut: float) -> List[Tuple[
     dU = u[1:] - u[:-1]
     dI = I[1:] - I[:-1]
     rd_delta = np.divide(dU, dI, out=np.full_like(dU, np.inf), where=dI != 0)
-    rd_theor = n * Ut / I[:-1]
+    rd_theor = np.divide(n * Ut, I[:-1], out=np.full_like(dU, np.inf), where=I[:-1] != 0)
     return list(zip(u[:-1], i_mA[:-1], rd_delta, rd_theor))
 
 

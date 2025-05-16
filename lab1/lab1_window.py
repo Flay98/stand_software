@@ -11,6 +11,8 @@ from lab1.const_lab1 import *
 from PyQt6.QtCore import QTimer
 from datetime import datetime
 
+from utils.table_validator import NumberDelegate
+
 
 class Lab1Window(QWidget):
     def __init__(self):
@@ -37,6 +39,12 @@ class Lab1Window(QWidget):
         self.table_dSchottky = PasteTableWidget(TABLE_ROW_COUNT, TABLE_RESISTANCE_COLUMN_COUNT)
         self.table_dSchottky.setHorizontalHeaderLabels(["Uвых, В", "Iвых, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
         self.table_dSchottky.setMaximumWidth(TABLE_RESISTANCE_WIDTH)
+
+        delegate = NumberDelegate(self)
+        self.table_si.setItemDelegate(delegate)
+        self.table_Schottky.setItemDelegate(delegate)
+        self.table_dSi.setItemDelegate(delegate)
+        self.table_dSchottky.setItemDelegate(delegate)
 
         self.button_measure_si = QPushButton("Снять значение")
         self.button_measure_si.clicked.connect(self.read_from_stand)
