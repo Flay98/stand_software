@@ -1,12 +1,12 @@
 from PyQt6.QtWidgets import (
     QWidget, QTableWidgetItem, QPushButton,
-    QHBoxLayout, QVBoxLayout, QLabel, QMessageBox, QFileDialog
+    QHBoxLayout, QVBoxLayout, QLabel, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from lab8.const_lab8 import *
 from formulas.formulas_window import FormulasWindow
 from lab8.controller_lab8 import Lab8Controller
-from utils.excel_timer_helper import save_tables_to_excel, update_timer_label
+from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.paste_table_widget import PasteTableWidget
 import matplotlib.pyplot as plt
 from PyQt6.QtCore import QTimer
@@ -261,15 +261,8 @@ class Lab8Window(QWidget):
         self.formulas_window.show()
 
     def on_save_all(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
-        if not path:
-            return
         tables = {
-            "input": self.table_input,
-            "output": self.table_output,
+            "Входная х-ка]": self.table_input,
+            "Выходная х-ка": self.table_output,
         }
-        try:
-            save_tables_to_excel(tables, path)
-            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", str(e))
+        export_tables_to_excel(self, tables)

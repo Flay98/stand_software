@@ -2,7 +2,7 @@ from typing import List, Tuple
 import numpy as np
 
 
-def compute_S_values(
+def compute_s_values(
         Ube: np.ndarray,
         Ic: np.ndarray,
         threshold: float

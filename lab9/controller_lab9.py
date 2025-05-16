@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple
 
 import numpy as np
 
-from lab9.calculations_lab9 import compute_S_values, compute_resistances
+from lab9.calculations_lab9 import compute_s_values, compute_resistances
 from lab9.const_lab9 import THRESHOLD_DELTA_U, THRESHOLD_DELTA_I, V_OHM_LOW, V_OHM_HIGH, V_DYN_LOW, V_DYN_HIGH
 from utils.data.measurement import Measurement
 from utils.stand_controller import StandController
@@ -18,7 +18,7 @@ class Lab9Controller:
         self.vh.append(m)
         return m
 
-    def compute_transconductance_S(
+    def compute_transconductance_s(
             self,
             data: Dict[float, Tuple[List[float], List[float]]]
     ) -> Dict[float, List[float]]:
@@ -27,7 +27,7 @@ class Lab9Controller:
         for Uce, (Ube_list, Ic_list) in data.items():
             Ube = np.array(Ube_list)
             Ic = np.array(Ic_list)
-            S_vals = compute_S_values(Ube, Ic, THRESHOLD_DELTA_U)
+            S_vals = compute_s_values(Ube, Ic, THRESHOLD_DELTA_U)
             if S_vals:
                 result[Uce] = S_vals
         if not result:

@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTableWidgetItem, QMessageBox, QFileDialog
+    QPushButton, QTableWidgetItem, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer
 from matplotlib import pyplot as plt
@@ -11,7 +11,7 @@ from lab9.const_lab9 import *
 
 from formulas.formulas_window import FormulasWindow
 from lab9.controller_lab9 import Lab9Controller
-from utils.excel_timer_helper import save_tables_to_excel, update_timer_label
+from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.paste_table_widget import PasteTableWidget
 
 
@@ -43,7 +43,7 @@ class Lab9Window(QWidget):
 
         self.table_resistance = PasteTableWidget()
         self.table_resistance.setColumnCount(3)
-        self.table_resistance.setHorizontalHeaderLabels(["Uзи, В", "Rₒм, Ω", "Rдин, Ω"])
+        self.table_resistance.setHorizontalHeaderLabels(["Uзи, В", "Rом, Ω", "Rдин, Ω"])
 
         self.table_s = PasteTableWidget()
         self.table_s.setColumnCount(12)
@@ -73,7 +73,7 @@ class Lab9Window(QWidget):
         self.btn_save_all = QPushButton("Сохранить всё в Excel")
         self.btn_save_all.clicked.connect(self.on_save_all)
 
-        self.timer_label = QLabel("Время выполнения работы 0:00:00")
+        self.timer_label = QLabel("Время выполнения работы 00:00:00")
 
         self.btn_exit = QPushButton("Завершить работу")
         self.btn_exit.clicked.connect(self.close)
@@ -91,8 +91,8 @@ class Lab9Window(QWidget):
         right = QVBoxLayout()
         right.addWidget(self.btn_plot_g)
         right.addWidget(self.btn_plot_out)
-        right.addWidget(self.btn_calc_S)
         right.addWidget(self.btn_calc_r)
+        right.addWidget(self.btn_calc_S)
         right.addWidget(self.button_formulas)
         right.addWidget(self.btn_save_all)
         right.addStretch()
@@ -268,7 +268,7 @@ class Lab9Window(QWidget):
     def on_calc_s(self):
         data = self._extract_s_data()
         try:
-            results = self.controller.compute_transconductance_S(data)
+            results = self.controller.compute_transconductance_s(data)
         except ValueError as e:
             QMessageBox.information(self, "Расчет S", str(e))
             return
@@ -337,16 +337,9 @@ class Lab9Window(QWidget):
         self.formulas_window.show()
 
     def on_save_all(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
-        if not path:
-            return
         tables = {
-            "Стокозатворная": self.table,
-            "Крутизна": self.table_s,
-            "Сопротивления": self.table_resistance
+            "Стокозатворная х-ка": self.table,
+            "Крутизна S": self.table_s,
+            "Сопротивления Rом и Rдин": self.table_resistance,
         }
-        try:
-            save_tables_to_excel(tables, path)
-            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", str(e))
+        export_tables_to_excel(self, tables)

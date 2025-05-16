@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QWidget, QVBoxLayout
 
-from lab1.lab1_window import Lab1Window  # Импорт окна ЛР №1
+from lab1.lab1_window import Lab1Window
 from lab2.lab2_window import Lab2Window
 from lab4.lab4_window import Lab4Window
 from lab8.lab8_window import Lab8Window

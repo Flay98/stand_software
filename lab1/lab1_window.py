@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTableWidgetItem, QTableWidget, \
-    QMessageBox, QFileDialog
+    QMessageBox
 from matplotlib import pyplot as plt
 
 from formulas.formulas_window import FormulasWindow
 from lab1.controller_lab1 import Lab1Controller
-from utils.excel_timer_helper import update_timer_label, save_tables_to_excel
+from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.paste_table_widget import PasteTableWidget
 from lab1.const_lab1 import *
 
@@ -77,7 +77,7 @@ class Lab1Window(QWidget):
         self.btn_save_all = QPushButton("Сохранить всё в Excel")
         self.btn_save_all.clicked.connect(self.on_save_all)
 
-        self.timer_label = QLabel("Время выполнения работы 0:00:00")
+        self.timer_label = QLabel("Время выполнения работы 00:00:00")
 
         self.button_exit = QPushButton("Завершить выполнение работы")
         self.button_exit.clicked.connect(self.close)
@@ -311,19 +311,12 @@ class Lab1Window(QWidget):
         self.formulas_window.show()
 
     def on_save_all(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Сохранить", "", "Excel Files (*.xlsx)")
-        if not path:
-            return
         tables = {
-            "Si": self.table_si,
-            "Sch": self.table_Schottky,
-            "rd_Si": self.table_dSi,
-            "rd_Sch": self.table_dSchottky,
+            "ВАХ кремниевого диода": self.table_si,
+            "ВАХ диода Шоттки": self.table_Schottky,
+            "Rдин кремниевого диода": self.table_dSi,
+            "Rдин диода Шоттки": self.table_dSchottky,
         }
-        try:
-            save_tables_to_excel(tables, path)
-            QMessageBox.information(self, "Готово", f"Сохранено в {path}")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", str(e))
+        export_tables_to_excel(self, tables)
 
 
