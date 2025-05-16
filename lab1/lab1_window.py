@@ -204,13 +204,13 @@ class Lab1Window(QWidget):
         try:
             m = self.controller.add_measurement(target)
             if row_index < table.rowCount():
-                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m[0]:.1f}"))
-                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m[1]:.3f}"))
-                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m[2]:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.1f}"))
+                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
+                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 row_index += 1
-
         except RuntimeError as e:
-            print(str(e))
+            QMessageBox.critical(self, "Стэнд недоступен", str(e))
+            return
 
         return row_index
 
@@ -326,5 +326,3 @@ class Lab1Window(QWidget):
             "Rдин диода Шоттки": self.table_dSchottky,
         }
         export_tables_to_excel(self, tables)
-
-

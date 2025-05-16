@@ -134,7 +134,7 @@ class Lab9Window(QWidget):
         if abs(expected_u - m.u_in) > THRESHOLD:
             QMessageBox.warning(
                 self, "Несоответствие напряжения",
-                f"Ожидалось Uси = {expected_u:.3f} В, а снято {m.u_in:.3f} В.\n"
+                f"Ожидалось Uси = {expected_u:.2f} В, а снято {m.u_in:.2f} В.\n"
                 "Проверьте установку на стенде."
             )
             return

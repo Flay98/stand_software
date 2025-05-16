@@ -111,7 +111,7 @@ class Lab2Window(QWidget):
                 self.row += 1
 
         except RuntimeError as e:
-            QMessageBox.information(self, "Ошибка", f"Ошибка при считывании данных со стенда: {e}")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при считывании данных со стенда: {e}")
 
     def plot_vah(self):
         u_vals = []

@@ -1,5 +1,6 @@
 import struct
 import serial
+from utils.data.measurement import Measurement
 
 
 def parse_float(data_bytes):
@@ -17,7 +18,26 @@ class StandController:
                    stopbits=serial.STOPBITS_ONE,
                    timeout=0.1)'''
 
+    def _ensure_connection(self):
+        if self.ser and self.ser.is_open:
+            return True
+        try:
+            self.ser = serial.Serial(
+                port='COM5',
+                baudrate=115200,
+                bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=0.1
+            )
+            return True
+        except serial.SerialException:
+            return False
+
     def get_voltage_current(self):
+        if not self._ensure_connection():
+            raise RuntimeError(f"Не удалось подключиться к COM-порту {'COM5'}")
+
         try:
             # Запрос Uвых и Iвых
             self.ser.write(bytes.fromhex("14 10 00 02 01 02 05 00"))
@@ -38,7 +58,15 @@ class StandController:
             else:
                 u_vkh = 0.0
 
-            return u_vkh, abs(u_vyk), i_vyk * 1000  # в мА
+            return Measurement(u_vkh, abs(u_vyk), i_vyk * 1000)  # в мА
 
-        except Exception as e:
-            raise RuntimeError(f"Ошибка при работе с лабораторным стендом: {str(e)}")
+        except serial.SerialException as e:
+            try:
+                self.ser.close()
+            except:
+                pass
+            self.ser = None
+            raise RuntimeError(f"Ошибка связи со стендом: {e!s}")
+
+        # except Exception as e:
+        #    raise RuntimeError(f"Ошибка при работе с лабораторным стендом: {str(e)}")

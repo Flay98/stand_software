@@ -191,7 +191,7 @@ class Lab4Window(QWidget):
                 row_index += 1
 
         except RuntimeError as e:
-            QMessageBox.information(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
 
         return row_index
 
@@ -206,8 +206,7 @@ class Lab4Window(QWidget):
                 col_index += 1
 
         except RuntimeError as e:
-            QMessageBox.information(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
-
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при чтении со стенда: {e}")
 
         return col_index
 
