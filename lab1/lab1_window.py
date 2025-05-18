@@ -240,6 +240,13 @@ class Lab1Window(QWidget):
         u_si, i_si = self.get_ui_data_from_table(self.table_si)
         u_Schottky, i_Schottky = self.get_ui_data_from_table(self.table_Schottky)
 
+        if len(u_si) < MIN_POINTS_TO_SHOW_PLOT or len(u_Schottky) < MIN_POINTS_TO_SHOW_PLOT:
+            QMessageBox.information(
+                self, "Ошибка",
+                f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+            )
+            return
+
         plt.figure(figsize=(10, 6))
         plt.plot(u_si, i_si, marker='o', linestyle='-', label="Кремниевый диод (Si)")
         plt.plot(u_Schottky, i_Schottky, marker='s', linestyle='-', label="Германиевый диод (Ge)")

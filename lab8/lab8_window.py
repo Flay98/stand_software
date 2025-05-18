@@ -178,6 +178,13 @@ class Lab8Window(QWidget):
                     x_u_be.append(u_be)
                     y_i_b.append(i_b)
 
+            if len(x_u_be) < MIN_POINTS_TO_SHOW_PLOT or len(y_i_b) < MIN_POINTS_TO_SHOW_PLOT:
+                QMessageBox.information(
+                    self, "Ошибка",
+                    f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+                )
+                return
+
             if x_u_be and y_i_b:
                 plt.plot(
                     x_u_be, y_i_b,
@@ -215,6 +222,13 @@ class Lab8Window(QWidget):
                     continue
                 x_Uce.append(u_ce)
                 y_Ic.append(ic)
+
+            if len(x_Uce) < MIN_POINTS_TO_SHOW_PLOT or len(y_Ic) < MIN_POINTS_TO_SHOW_PLOT:
+                QMessageBox.information(
+                    self, "Ошибка",
+                    f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+                )
+                return
 
             if x_Uce and y_Ic:
                 plt.plot(

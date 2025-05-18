@@ -185,8 +185,14 @@ class Lab9Window(QWidget):
             x = [u for u, i in zip(Uzi, Ic) if u is not None and i is not None]
             y = [i for u, i in zip(Uzi, Ic) if u is not None and i is not None]
 
-            if len(x) >= MIN_POINTS_TO_SHOW_PLOT:
+            if len(x) == MIN_POINTS_TO_SHOW_PLOT:
                 plt.plot(x, y, marker='o', linestyle='-', label=f"Uси={Usi:.1f} В")
+            else:
+                QMessageBox.information(
+                    self, "Ошибка",
+                    f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+                )
+                return
 
         plt.xlabel("Uзи, В")
         plt.ylabel("Ic, мА")
@@ -231,9 +237,15 @@ class Lab9Window(QWidget):
                 xs.append(usi)
                 ys.append(ic)
 
-            if len(xs) >= MIN_POINTS_TO_SHOW_PLOT:
+            if len(ys) >= MIN_POINTS_TO_SHOW_PLOT:
                 plt.plot(xs, ys, marker='o', linestyle='-',
                          label=f"Uзи = {Uzi:.2f} В")
+            else:
+                QMessageBox.information(
+                    self, "Ошибка",
+                    f"Недостаточно данных для построения графика (минимум {MIN_POINTS_TO_SHOW_PLOT} точек)"
+                )
+                return
 
         plt.xlabel("Uси, В")
         plt.ylabel("Ic, мА")
