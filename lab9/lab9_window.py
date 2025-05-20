@@ -12,8 +12,8 @@ from lab9.const_lab9 import *
 from formulas.formulas_window import FormulasWindow
 from lab9.controller_lab9 import Lab9Controller
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
-from utils.paste_table_widget import PasteTableWidget
-from utils.table_validator import NumberDelegate
+from utils.tables.paste_table_widget import PasteTableWidget
+from utils.tables.table_validator import NumberDelegate
 
 
 class Lab9Window(QWidget):

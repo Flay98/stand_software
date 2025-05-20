@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem
 from PyQt6.QtGui import QKeyEvent, QKeySequence
 import pyperclip
+import re
 
 
 class PasteTableWidget(QTableWidget):
@@ -16,8 +17,17 @@ class PasteTableWidget(QTableWidget):
         start_row = self.currentRow()
         start_col = self.currentColumn()
 
-        for r, row_data in enumerate(rows):
-            columns = row_data.split('\t')
-            for c, cell in enumerate(columns):
-                if (start_row + r) < self.rowCount() and (start_col + c) < self.columnCount():
-                    self.setItem(start_row + r, start_col + c, QTableWidgetItem(cell.strip()))
+        num_re = re.compile(r'^-?(?:\d+(?:\.\d*)?|\.\d+)$')
+
+        for dr, row_data in enumerate(rows):
+            cols = row_data.split('\t')
+            for dc, cell in enumerate(cols):
+                r = start_row + dr
+                c = start_col + dc
+                if r >= self.rowCount() or c >= self.columnCount():
+                    continue
+
+                s = cell.strip()
+
+                if num_re.match(s):
+                    self.setItem(r, c, QTableWidgetItem(s))

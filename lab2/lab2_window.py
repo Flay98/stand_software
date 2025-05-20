@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
 from lab2.controller_lab2 import Lab2Controller
 from lab2.const_lab2 import *
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
-from utils.paste_table_widget import PasteTableWidget
+from utils.tables.paste_table_widget import PasteTableWidget
 from formulas.formulas_window import FormulasWindow
 
 from PyQt6.QtCore import QTimer
@@ -15,7 +15,7 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 
-from utils.table_validator import NumberDelegate
+from utils.tables.table_validator import NumberDelegate
 
 
 class Lab2Window(QWidget):

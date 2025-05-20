@@ -5,13 +5,13 @@ from matplotlib import pyplot as plt
 from formulas.formulas_window import FormulasWindow
 from lab1.controller_lab1 import Lab1Controller
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
-from utils.paste_table_widget import PasteTableWidget
+from utils.tables.paste_table_widget import PasteTableWidget
 from lab1.const_lab1 import *
 
 from PyQt6.QtCore import QTimer
 from datetime import datetime
 
-from utils.table_validator import NumberDelegate
+from utils.tables.table_validator import NumberDelegate
 
 
 class Lab1Window(QWidget):

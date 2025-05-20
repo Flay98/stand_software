@@ -10,13 +10,6 @@ def parse_float(data_bytes):
 class StandController:
     def __init__(self):
         self.ser = None
-        '''serial.Serial(
-                   port='COM5',
-                   baudrate=115200,
-                   bytesize=serial.EIGHTBITS,
-                   parity=serial.PARITY_NONE,
-                   stopbits=serial.STOPBITS_ONE,
-                   timeout=0.1)'''
 
     def _ensure_connection(self):
         if self.ser and self.ser.is_open:
@@ -67,6 +60,3 @@ class StandController:
                 pass
             self.ser = None
             raise RuntimeError(f"Ошибка связи со стендом: {e!s}")
-
-        # except Exception as e:
-        #    raise RuntimeError(f"Ошибка при работе с лабораторным стендом: {str(e)}")
