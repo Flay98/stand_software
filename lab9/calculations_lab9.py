@@ -1,6 +1,8 @@
 from typing import List, Tuple
 import numpy as np
 
+MIN_POINTS_TO_CALC_S = 2
+
 
 def compute_s_values(
         Ube: np.ndarray,
@@ -8,7 +10,7 @@ def compute_s_values(
         threshold: float
 ) -> List[float]:
 
-    if Ube.size < 2 or Ic.size < 2:
+    if Ube.size < MIN_POINTS_TO_CALC_S or Ic.size < MIN_POINTS_TO_CALC_S:
         return []
     S = []
     for i in range(Ube.size - 1):

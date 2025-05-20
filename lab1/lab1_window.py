@@ -67,10 +67,12 @@ class Lab1Window(QWidget):
             lambda: self.on_shockley(self.table_Schottky))
 
         self.button_calc_dSi = QPushButton("Расчёт динамического сопротивления кремниевого диода")
-        self.button_calc_dSi.clicked.connect(self.on_calc_rd_si)
+        self.button_calc_dSi.clicked.connect(
+            lambda: self.on_calc_rd(self.table_si, 'si'))
 
         self.button_calc_dSchottky = QPushButton("Расчёт динамического сопротивления диода Шоттки")
-        self.button_calc_dSchottky.clicked.connect(self.on_calc_rd_sch)
+        self.button_calc_dSchottky.clicked.connect(
+            lambda: self.on_calc_rd(self.table_Schottky, 'sch'))
 
         self.button_compare_Si_theor_graph = QPushButton("Сравнение экспериментальной и теоретической ВАХ для "
                                                          "кремниевого диода")
@@ -162,7 +164,7 @@ class Lab1Window(QWidget):
             QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=PLOT_SIZE)
         plt.plot(U, I_exp, 'o-', label='Экспериментальная ВАХ')
         plt.plot(U_th, I_th, 'r-', label=f'Теоретическая ВАХ\n{label}')
         plt.xlabel("U (В)")
@@ -173,25 +175,16 @@ class Lab1Window(QWidget):
         plt.tight_layout()
         plt.show()
 
-    def on_calc_rd_si(self):
+    def on_calc_rd(self, table, target):
         try:
-            U, I_mA = self.get_ui_data_from_table(self.table_si)
-            rows = self.controller.calculate_dynamic_resistance(U, I_mA, n_value=1.84)
-        except ValueError as e:
+            U, I_mA = self.get_ui_data_from_table(table)
+            rows = self.controller.calculate_dynamic_resistance(target, U, I_mA)
+        except Exception as e:
             QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        self._populate_rd_table(self.table_dSi, rows)
-
-    def on_calc_rd_sch(self):
-        try:
-            U, I_mA = self.get_ui_data_from_table(self.table_Schottky)
-            rows = self.controller.calculate_dynamic_resistance(U, I_mA, n_value=1.15)
-        except ValueError as e:
-            QMessageBox.information(self, "Ошибка", str(e))
-            return
-
-        self._populate_rd_table(self.table_dSchottky, rows)
+        table_dst = self.table_dSi if target == 'si' else self.table_dSchottky
+        self._populate_rd_table(table_dst, rows)
 
     def _populate_rd_table(self, table, rows):
         table.clearContents()
@@ -247,7 +240,7 @@ class Lab1Window(QWidget):
             )
             return
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=PLOT_SIZE)
         plt.plot(u_si, i_si, marker='o', linestyle='-', label="Кремниевый диод (Si)")
         plt.plot(u_Schottky, i_Schottky, marker='s', linestyle='-', label="Германиевый диод (Ge)")
 
@@ -275,11 +268,11 @@ class Lab1Window(QWidget):
 
         dialog = QWidget()
         dialog.setWindowTitle("Теоретическое динамическое сопротивление (Si)")
-        dialog.resize(550, 400)
+        dialog.resize(THEORETICAL_RD_HEIGHT, THEORETICAL_RD_WIDTH)
 
         layout = QVBoxLayout(dialog)
         table = QTableWidget()
-        table.setColumnCount(4)
+        table.setColumnCount(TABLE_RESISTANCE_COLUMN_COUNT)
         table.setHorizontalHeaderLabels(["U, В", "I, мА", "rd (ΔU/ΔI), Ом", "rd (nUt/Id), Ом"])
         table.setRowCount(len(rows))
 
@@ -297,20 +290,17 @@ class Lab1Window(QWidget):
         self.theor_dialog = dialog
 
     def on_shockley(self, table):
-
+        target = 'si' if table is self.table_si else 'sch'
         U, I_mA = self.get_ui_data_from_table(table)
-
         try:
             U_th, I_th, Is_fit, n_fit = self.controller.get_shockley_data(
-                u_list=U,
-                i_list=I_mA,
-                Ut=U_T
+                target, U, I_mA, U_T
             )
         except ValueError as e:
             QMessageBox.information(self, "Ошибка", str(e))
             return
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=PLOT_SIZE)
         plt.plot(U, I_mA, 'o', label='Экспериментальные данные')
         plt.plot(U_th, I_th, '-', label=f'Теоретическая кривая\nIs={Is_fit:.2e} A, n={n_fit:.2f}')
         plt.xlabel("Напряжение на диоде, В")

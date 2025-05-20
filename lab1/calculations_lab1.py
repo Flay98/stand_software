@@ -35,7 +35,7 @@ def compute_shockley_experimental(
 
         I_solution = fsolve(current_eq, I_prev)[0]
         I_prev = I_solution
-        I_result.append(I_solution * 1000.0)  # переводим в мА
+        I_result.append(I_solution * 1000.0)
 
     return np.array(I_result)
 

@@ -18,6 +18,9 @@ class Lab1Controller:
         self.si_data: list[Measurement] = []
         self.sch_data: list[Measurement] = []
 
+        self.si_n_value = None
+        self.sch_n_value = None
+
     def add_measurement(self, target: Target) -> Measurement:
         m = self.stand.get_voltage_current()
 
@@ -29,19 +32,6 @@ class Lab1Controller:
 
     def get_measurements(self, target: Target) -> list[Measurement]:
         return self.si_data if target == 'si' else self.sch_data
-
-    def calculate_dynamic_resistance(
-            self,
-            u: List[float],
-            i_mA: List[float],
-            n_value: float
-    ) -> List[Tuple[float, float, float, float]]:
-
-        if len(u) < MIN_POINTS_TO_CALC_R_D:
-            raise ValueError(f"Нужно как минимум {MIN_POINTS_TO_CALC_R_D} точек")
-        u_arr = np.array(u)
-        i_arr = np.array(i_mA)
-        return calc_dynamic_resistance(u_arr, i_arr, n_value, U_T)
 
     def compute_exp_theor_vah(
             self,
@@ -65,17 +55,6 @@ class Lab1Controller:
 
         return u_arr, i_arr, u_arr, I_th, label
 
-    def get_shockley_data(
-            self,
-            u_list: List[float],
-            i_list: List[float],
-            Ut: float
-    ) -> Tuple[np.ndarray, np.ndarray, float, float]:
-
-        u = np.array(u_list)
-        i_mA = np.array(i_list)
-        return shockley_model(u, i_mA, Ut)
-
     def compute_theoretical_rd(
             self,
             u_list: List[float],
@@ -90,6 +69,45 @@ class Lab1Controller:
             raise ValueError("Недостаточно точек для расчёта теоретического rd")
         return theoretical_dynamic_resistance(U_vals, Is, n, Rs, Ut)
 
+    def _calculate_dynamic_resistance(
+            self,
+            u: List[float],
+            i_mA: List[float],
+            n_value: float
+    ) -> List[Tuple[float, float, float, float]]:
+        if len(u) < MIN_POINTS_TO_CALC_R_D:
+            raise ValueError(f"Нужно как минимум {MIN_POINTS_TO_CALC_R_D} точек")
+        if n_value is None:
+            raise ValueError("Нужен подбор параметров уравнения Шокли для подсчета сопротивления")
 
+        u_arr = np.array(u)
+        i_arr = np.array(i_mA)
+        return calc_dynamic_resistance(u_arr, i_arr, n_value, U_T)
 
+    def calculate_dynamic_resistance(
+            self,
+            target: Target,
+            u: List[float],
+            i_mA: List[float]
+    ) -> List[Tuple[float, float, float, float]]:
 
+        n_value = getattr(self, f"{target}_n_value")
+
+        if n_value is None:
+            raise ValueError("Нужен подбор параметров уравнения Шокли для подсчёта сопротивления")
+
+        n = round(n_value, 2)
+        return self._calculate_dynamic_resistance(u, i_mA, n)
+
+    def get_shockley_data(
+            self,
+            target: Target,
+            u_list: List[float],
+            i_list: List[float],
+            Ut: float
+    ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        u = np.array(u_list)
+        i_mA = np.array(i_list)
+        U_th, I_th, Is_fit, n_fit = shockley_model(u, i_mA, Ut)
+        setattr(self, f"{target}_n_value", n_fit)
+        return U_th, I_th, Is_fit, n_fit
