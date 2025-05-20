@@ -7,12 +7,15 @@ from lab4.lab4_window import Lab4Window
 from lab8.lab8_window import Lab8Window
 from lab9.lab9_window import Lab9Window
 
+MAIN_WINDOW_HEIGHT = 400
+MAIN_WINDOW_WIDTH = 300
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Главное меню")
-        self.resize(400, 300)
+        self.resize(MAIN_WINDOW_HEIGHT, MAIN_WINDOW_WIDTH)
 
         widget = QWidget()
         layout = QVBoxLayout()
