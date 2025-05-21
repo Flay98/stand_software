@@ -14,6 +14,7 @@ from PyQt6.QtCore import QTimer
 from datetime import datetime
 
 from utils.tables.table_validator import NumberDelegate
+from utils.tables.voltage_control import VoltageControl
 
 
 class Lab4Window(QWidget):
@@ -83,6 +84,8 @@ class Lab4Window(QWidget):
         self.button_exit = QPushButton("Завершить работу")
         self.button_exit.clicked.connect(self.close)
 
+        vc = VoltageControl(on_submit=self.controller.set_voltage)
+
         layout_main = QHBoxLayout()
         layout_tables = QVBoxLayout()
         layout_side = QVBoxLayout()
@@ -105,6 +108,7 @@ class Lab4Window(QWidget):
         layout_side.addWidget(self.button_plot)
         layout_side.addWidget(self.button_formulas)
         layout_side.addWidget(self.btn_save_all)
+        layout_side.addWidget(vc)
 
         layout_side.addStretch()
 

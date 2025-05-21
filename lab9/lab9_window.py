@@ -14,6 +14,7 @@ from lab9.controller_lab9 import Lab9Controller
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.tables.paste_table_widget import PasteTableWidget
 from utils.tables.table_validator import NumberDelegate
+from utils.tables.voltage_control import VoltageControl
 
 
 class Lab9Window(QWidget):
@@ -84,6 +85,8 @@ class Lab9Window(QWidget):
         self.btn_exit = QPushButton("Завершить работу")
         self.btn_exit.clicked.connect(self.close)
 
+        vc = VoltageControl(on_submit=self.controller.set_voltage)
+
         left = QVBoxLayout()
         left.addWidget(QLabel("Стокозатворная и выходная характеристика полевого транзистора"))
         left.addWidget(self.table)
@@ -101,6 +104,7 @@ class Lab9Window(QWidget):
         right.addWidget(self.btn_calc_S)
         right.addWidget(self.button_formulas)
         right.addWidget(self.btn_save_all)
+        right.addWidget(vc)
         right.addStretch()
         right.addWidget(self.timer_label)
         right.addWidget(self.btn_exit)

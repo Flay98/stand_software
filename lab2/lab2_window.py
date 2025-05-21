@@ -16,6 +16,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 from utils.tables.table_validator import NumberDelegate
+from utils.tables.voltage_control import VoltageControl
 
 
 class Lab2Window(QWidget):
@@ -62,6 +63,8 @@ class Lab2Window(QWidget):
         self.button_exit = QPushButton("Завершить выполнение работы")
         self.button_exit.clicked.connect(self.close)
 
+        vc = VoltageControl(on_submit=self.controller.set_voltage)
+
         main_layout = QHBoxLayout()
         table_layout = QVBoxLayout()
         side_layout = QVBoxLayout()
@@ -87,6 +90,7 @@ class Lab2Window(QWidget):
         side_layout.addWidget(self.button_formulas)
         side_layout.addWidget(self.button_find_stabilization)
         side_layout.addWidget(self.btn_save_all)
+        side_layout.addWidget(vc)
         side_layout.addStretch()
         side_layout.addWidget(self.timer_label)
         side_layout.addWidget(self.avg_rd_label)

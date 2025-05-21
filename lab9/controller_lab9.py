@@ -5,6 +5,7 @@ import numpy as np
 from lab9.calculations_lab9 import compute_s_values, compute_resistances
 from lab9.const_lab9 import THRESHOLD_DELTA_U, THRESHOLD_DELTA_I, V_OHM_LOW, V_OHM_HIGH, V_DYN_LOW, V_DYN_HIGH
 from utils.data.measurement import Measurement
+from utils.packet_builder import PacketBuilder
 from utils.stand_controller import StandController
 
 
@@ -12,6 +13,8 @@ class Lab9Controller:
     def __init__(self):
         self.stand = StandController()
         self.vh: List[Measurement] = []
+
+        self.voltage_builder = PacketBuilder(bytes([0x20, 0x50, 0x00, 0x01, 0x02, 0x01]))
 
     def measure(self) -> Measurement:
         m = self.stand.get_voltage_current()
@@ -50,3 +53,7 @@ class Lab9Controller:
         if not res:
             raise ValueError("Нет достаточных данных для расчёта сопротивлений.")
         return res
+
+    def set_voltage(self, voltage: float):
+        packet = self.voltage_builder.build_float(voltage)
+        self.stand.send_bytes(packet)

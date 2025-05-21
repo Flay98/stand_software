@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from PyQt6.QtCore import QTimer
 from datetime import datetime
 from utils.tables.table_validator import NumberDelegate
+from utils.tables.voltage_control import VoltageControl
 
 
 class Lab8Window(QWidget):
@@ -83,6 +84,8 @@ class Lab8Window(QWidget):
         self.btn_exit = QPushButton("Завершить работу")
         self.btn_exit.clicked.connect(self.close)
 
+        vc = VoltageControl(on_submit=self.controller.set_voltage)
+
         left = QVBoxLayout()
         left.addWidget(QLabel("Входная характеристика"))
         left.addWidget(self.table_input)
@@ -97,6 +100,7 @@ class Lab8Window(QWidget):
         right.addWidget(self.btn_avg_beta)
         right.addWidget(self.button_formulas)
         right.addWidget(self.btn_save_all)
+        right.addWidget(vc)
         right.addStretch()
         right.addWidget(self.timer_label)
         right.addWidget(self.btn_exit)

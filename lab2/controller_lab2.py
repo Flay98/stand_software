@@ -3,6 +3,7 @@ from typing import List, Tuple
 import numpy as np
 from lab2.calculations_lab2 import calc_rd, find_stabilization
 from lab2.const_lab2 import MIN_POINTS_TO_CALC_RD, MIN_POINTS_TO_CALC_STAB
+from utils.packet_builder import PacketBuilder
 from utils.stand_controller import StandController
 from utils.data.measurement import Measurement
 
@@ -11,6 +12,8 @@ class Lab2Controller:
     def __init__(self):
         self.stand = StandController()
         self.vah: List[Measurement] = []
+
+        self.voltage_builder = PacketBuilder(bytes([0x20, 0x50, 0x00, 0x01, 0x02, 0x01]))
 
     def measure(self) -> Measurement:
         m = self.stand.get_voltage_current()
@@ -55,3 +58,7 @@ class Lab2Controller:
         rd_values = [t[2] for t in rows]
         rd_avg = sum(rd_values) / len(rd_values)
         return rd_avg
+
+    def set_voltage(self, voltage: float):
+        packet = self.voltage_builder.build_float(voltage)
+        self.stand.send_bytes(packet)

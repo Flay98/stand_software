@@ -60,3 +60,10 @@ class StandController:
                 pass
             self.ser = None
             raise RuntimeError(f"Ошибка связи со стендом: {e!s}")
+
+    def send_bytes(self, data: bytes):
+        if not self._ensure_connection():
+            raise RuntimeError(f"Не удалось подключиться к COM-порту {'COM5'}")
+
+        self.ser.write(data)
+        self.ser.read(32)

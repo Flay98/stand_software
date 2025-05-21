@@ -1,3 +1,4 @@
+import struct
 from typing import Literal, Tuple, List
 
 import numpy as np
@@ -7,6 +8,7 @@ from utils.data.measurement import Measurement
 from lab1.calculations_lab1 import calc_dynamic_resistance, compute_shockley_experimental, shockley_model, \
     theoretical_dynamic_resistance
 from utils.stand_controller import StandController
+from utils.packet_builder import PacketBuilder
 
 Target = Literal['si', 'sch']
 
@@ -20,6 +22,8 @@ class Lab1Controller:
 
         self.si_n_value = None
         self.sch_n_value = None
+
+        self.voltage_builder = PacketBuilder(bytes([0x20, 0x50, 0x00, 0x01, 0x02, 0x01]))
 
     def add_measurement(self, target: Target) -> Measurement:
         m = self.stand.get_voltage_current()
@@ -111,3 +115,7 @@ class Lab1Controller:
         U_th, I_th, Is_fit, n_fit = shockley_model(u, i_mA, Ut)
         setattr(self, f"{target}_n_value", n_fit)
         return U_th, I_th, Is_fit, n_fit
+
+    def set_voltage(self, voltage: float):
+        packet = self.voltage_builder.build_float(voltage)
+        self.stand.send_bytes(packet)
