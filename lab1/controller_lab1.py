@@ -1,4 +1,3 @@
-import struct
 from typing import Literal, Tuple, List
 
 import numpy as np

@@ -200,14 +200,15 @@ class Lab1Window(QWidget):
     def read_and_append_row(self, table, target, row_index):
         try:
             m = self.controller.add_measurement(target)
-            if row_index < table.rowCount():
-                table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.1f}"))
-                table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
-                table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
-                row_index += 1
         except RuntimeError as e:
             QMessageBox.critical(self, "Стэнд недоступен", str(e))
-            return
+            return row_index
+
+        if row_index < table.rowCount():
+            table.setItem(row_index, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.1f}"))
+            table.setItem(row_index, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
+            table.setItem(row_index, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
+            row_index += 1
 
         return row_index
 

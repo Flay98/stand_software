@@ -109,7 +109,7 @@ class Lab2Window(QWidget):
             m = self.controller.measure()
 
             if self.row < self.table_vah.rowCount():
-                self.table_vah.setItem(self.row, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.3f}"))
+                self.table_vah.setItem(self.row, COLUMN_NUMBER_ONE, QTableWidgetItem(f"{m.u_in:.1f}"))
                 self.table_vah.setItem(self.row, COLUMN_NUMBER_TWO, QTableWidgetItem(f"{m.u_out:.3f}"))
                 self.table_vah.setItem(self.row, COLUMN_NUMBER_THREE, QTableWidgetItem(f"{m.i_out_mA:.3f}"))
                 self.row += 1

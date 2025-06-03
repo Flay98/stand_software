@@ -12,7 +12,7 @@ class VoltageControl(QWidget):
         layout.addWidget(QLabel())
         self.input = QLineEdit()
         self.input.setPlaceholderText("U, В")
-        re = QRegularExpression(r'^\d+(\.\d{1,3})?$')
+        re = QRegularExpression(r'^(?:[0-9]|1[0-2])(?:\.[0-9])?$')
         validator = QRegularExpressionValidator(re, self)
         self.input.setValidator(validator)
 
@@ -41,4 +41,4 @@ class VoltageControl(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Ошибка при отправке", str(e))
         else:
-            QMessageBox.information(self, "Готово", f"U={v:.3f}В отправлено")
+            QMessageBox.information(self, "Готово", f"U={v:.1f}В отправлено")

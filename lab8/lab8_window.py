@@ -126,7 +126,7 @@ class Lab8Window(QWidget):
         if in_row is None and out_row is None:
             QMessageBox.warning(
                 self, "Неверное Uкэ",
-                f"Uкэ={m.u_in:.3f} В отсутствует в конфигурации таблиц."
+                f"Uкэ={m.u_in:.1f} В отсутствует в конфигурации таблиц."
             )
             return
 
