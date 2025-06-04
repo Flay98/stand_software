@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from lab8.const_lab8 import *
-from formulas.formulas_window import FormulasWindow
+from utils.formulas.formulas_window import FormulasWindow
 from lab8.controller_lab8 import Lab8Controller
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.tables.paste_table_widget import PasteTableWidget

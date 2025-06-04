@@ -8,7 +8,7 @@ from lab2.controller_lab2 import Lab2Controller
 from lab2.const_lab2 import *
 from utils.excel_timer_helper import update_timer_label, export_tables_to_excel
 from utils.tables.paste_table_widget import PasteTableWidget
-from formulas.formulas_window import FormulasWindow
+from utils.formulas.formulas_window import FormulasWindow
 
 from PyQt6.QtCore import QTimer
 from datetime import datetime
