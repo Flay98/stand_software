@@ -42,13 +42,9 @@ def test_calc_rd_zero_current():
     assert np.isinf(rd_theor)
 
 @pytest.mark.parametrize("u, i_mA, min_rd, expected_index", [
-    # Simple find at second interval
     (np.array([1.0, 2.0, 3.0]), np.array([10.0, 20.0, 40.0]), 80.0, 1),
-    # No stabilization because rd always >= min_rd
     (np.array([1.0, 2.0, 3.0]), np.array([10.0, 20.0, 40.0]), 200.0, 0),
-    # Skips zero current difference
     (np.array([1.0, 2.0, 3.0]), np.array([10.0, 10.0, 20.0]), 90.0, -1),
-    # First valid interval meets condition
     (np.array([0.0, 0.5, 1.0]), np.array([0.0, 5.0, 20.0]), 50.0, 1),
 ])
 def test_find_stabilization(u, i_mA, min_rd, expected_index):
@@ -56,7 +52,5 @@ def test_find_stabilization(u, i_mA, min_rd, expected_index):
     assert idx == expected_index
 
 def test_find_stabilization_empty_or_single():
-    # Empty arrays
     assert find_stabilization(np.array([]), np.array([]), min_rd=1.0) == -1
-    # Single element
     assert find_stabilization(np.array([1.0]), np.array([5.0]), min_rd=1.0) == -1

@@ -63,7 +63,7 @@ class Lab1Window(QWidget):
 
         self.button_Shockley_Schottky_graph = QPushButton(
             "Подбор параметров уравнения Шокли по экспериментальным данным для "
-            "германиевого диода")
+            "диода Шоттки")
         self.button_Shockley_Schottky_graph.clicked.connect(
             lambda: self.on_shockley(self.table_Schottky))
 
