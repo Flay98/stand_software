@@ -171,8 +171,8 @@ class Lab1Window(QWidget):
         plt.figure(figsize=PLOT_SIZE)
         plt.plot(U, I_exp, 'o-', label='Экспериментальная ВАХ')
         plt.plot(U_th, I_th, 'r-', label=f'Теоретическая ВАХ\n{label}')
-        plt.xlabel("U (В)")
-        plt.ylabel("I (мА)")
+        plt.xlabel("U, В")
+        plt.ylabel("I, мА")
         plt.title("Сравнение экспериментальной и теоретической ВАХ")
         plt.grid(True)
         plt.legend()
@@ -201,7 +201,7 @@ class Lab1Window(QWidget):
         try:
             m = self.controller.add_measurement(target)
         except RuntimeError as e:
-            QMessageBox.critical(self, "Стэнд недоступен", str(e))
+            QMessageBox.critical(self, "Стенд недоступен", str(e))
             return row_index
 
         if row_index < table.rowCount():

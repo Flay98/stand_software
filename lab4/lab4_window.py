@@ -155,7 +155,7 @@ class Lab4Window(QWidget):
         plt.figure(figsize=(8, 6))
         plt.plot(u_pit_vals, u_load_vals, 'o-')
         plt.xlabel("Uпит, В")
-        plt.ylabel("Uнагр, В")
+        plt.ylabel("Uн, В")
         plt.title("Зависимость Uнагрузки от Uпитания")
         plt.grid(True)
         plt.tight_layout()
