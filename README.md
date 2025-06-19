@@ -1,14 +1,15 @@
-1)  python3 -m venv .venv       # создаёт виртуальное окружение в папке .venv
-    source .venv/bin/activate   # Linux/macOS
-    .\.venv\Scripts\activate    # Windows PowerShell
+# Windows
 
-    # или
+1) Первый вариант: попросить .exe файл у преподавателя (установленный Python не нужен)
+2) Второй вариант: установить Python, клонировать репозиторий, создать и активировать виртуальное окружение (python -m venv .venv
+\.venv\Scripts\activate). Установить зависимости (pip install --upgrade;
+pip install -r requirements.txt). Запустить приложение: python main_window.py
 
-    python -m venv .venv
-    .\.venv\Scripts\Activate.ps1   # если PowerShell
-    # или
-    .\.venv\Scripts\activate.bat    # если CMD
+# Linux
 
-2) pip install -r requirements.txt
+1) Первый вариант: попросить исполняемый файл у преподавателя (установленный Python не нужен, если возникает ошибка такого типа: "нет установленного приложения для типа Исполняемый", то в консоли: chmod +x имя_файла)
+2) Второй вариант: Установите Git, Python и venv-модуль (sudo apt update; sudo apt install -y git python3 python3-venv python3-pip). 
+Клонируйте репозиторий и перейдите в папку проекта. Создайте и активируйте виртуальное окружение (python3 -m venv .venv;
+source .venv/bin/activate). Установите зависимости. Запустите программу
 
-3) python main_window.py
+Не забудьте скачать необходмые драйвера для работы по COM-порту, инструкции есть на сайте компании
